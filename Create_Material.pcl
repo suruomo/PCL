@@ -1,0 +1,62 @@
+#include "appforms.p"
+
+CLASS Create_Material
+	
+   CLASSWIDE WIDGET form_id,@
+                    type_menu,select_button,cancel_button
+   
+   FUNCTION init() 
+    real x_loc,y_loc
+	
+    x_loc=UNFRAMED_L_MARGIN
+    y_loc=FORM_T_MARGIN
+    /*
+    * 创建表单
+    */	
+    form_id=ui_form_create("",FORM_X_LOC,FORM_Y_LOC, "UL",FORM_WID_SML,FORM_HGT_HALF, "Create Material", "" )
+
+	  /*
+    * 创建输入框
+    */
+    type_menu=ui_optionmenu_create(form_id,"",x_loc,y_loc,0.0,"Material Type:",FALSE)
+    ui_item_create(type_menu,"Isotropic","Isotropic",FALSE)
+    ui_item_create(type_menu,"2D_Orthotropic","2D Orthotropic",FALSE)
+
+    y_loc+= DBOX_HGT_LABOVE + INTER_WIDGET_SPACE
+
+    /*
+    * 创建三个按钮
+    */	
+    select_button=ui_button_create(form_id, "select_material_db", BUTTON_FULL_X_LOC1, y_loc, BUTTON_WID_FULL, 0.,"Select Material From Database", TRUE, FALSE)
+
+    y_loc+= DBOX_HGT_LABOVE + INTER_WIDGET_SPACE
+    
+    cancel_button=ui_button_create(form_id, "cancel", BUTTON_FULL_X_LOC1, y_loc, BUTTON_WID_FULL, 0.,"Cancel", FALSE, FALSE)
+
+   END FUNCTION
+
+  FUNCTION display()
+   	ui_form_display("Create_Material")
+  END FUNCTION
+  
+
+  FUNCTION select_material_db()
+    ui_write("Select Material From Database.....")
+    STRING item [20]
+    ui_wid_get (type_menu,"VALUE", item)
+  	IF(item=="Isotropic")THEN
+			  ui_exec_function("Mat1","init")
+        Mat1.display()
+    ELSE
+        ui_exec_function("Mat8","init")
+        Mat8.display()
+    END IF
+
+  END FUNCTION
+  
+  
+  FUNCTION cancel()
+    ui_form_hide("Create_Material")
+  END FUNCTION
+ 
+END CLASS

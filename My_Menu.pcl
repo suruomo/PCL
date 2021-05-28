@@ -1,0 +1,90 @@
+
+/* $Header: /banff/vbs/Dev.X700/cCase/d1/src/./pcl/custom/RCS/custom.pcl,v 1.2 91/11/06 16:23:18 kramer Exp $ */
+CLASS My_Menu
+
+
+   FUNCTION init()
+
+      WIDGET menubar_id, usermenu_id,model_id
+
+      menubar_id = uil_primary.get_menubar_id()
+	  
+	  /*
+       * 创建一级菜单
+       */
+      usermenu_id = ui_menu_create(                      @
+                    /* parent   */  menubar_id,          @
+                    /* callback */  "main_menu",           @
+                    /* label    */  "My_System" )
+	   /*
+       * 创建二级菜单
+       */			
+	  model_id=ui_menu_create(                      @
+                    /* parent   */  usermenu_id,          @
+                    /* callback */  "model_menu",           @
+                    /* label    */  "Create Model" )
+
+      /*
+       * 创建菜单项
+       */
+	   
+	   ui_item_create(                                    @
+      /* parent     */   model_id,                    @
+      /* callback   */   "material",                        @
+      /* label      */   "Create Material",                       @
+      /* Toggleable */   FALSE )
+	  
+      ui_item_create(                                    @
+      /* parent     */   usermenu_id,                    @
+      /* callback   */   "result",                        @
+      /* label      */   "Results",                       @
+      /* Toggleable */   FALSE )
+	
+	  
+
+
+   END FUNCTION
+
+   FUNCTION display()
+   /*
+    * Every class must have a display function 
+    *
+    *  Normally, a display function displays the form and all its 
+    *  widgets.  However, in this case, the class is a menu which is 
+    *  always displayed since the top level menu is always displayed.
+    *
+    *  Hence, this function acts as a place holder.
+    */
+   END FUNCTION
+   
+   /*
+    * 主菜单响应
+    */
+   FUNCTION main_menu( item_name )
+
+    STRING item_name[]
+	  
+	SWITCH(item_name)
+		CASE("result")
+			ui_write("start getting results....")
+	END SWITCH
+
+   END FUNCTION
+   
+   /*
+    * 建模菜单响应
+    */
+   FUNCTION model_menu( item_name )
+
+    STRING item_name[]
+	  
+	SWITCH(item_name)
+		CASE("material")
+			ui_write("start creating material....")
+			ui_exec_function("Create_Material","init")
+			ui_exec_function("Create_Material","display")
+	END SWITCH
+
+   END FUNCTION
+ 
+END CLASS
