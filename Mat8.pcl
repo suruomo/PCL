@@ -185,7 +185,7 @@ CLASS Mat8_List
     END IF
 
     $ 创建list列表
-    list_id=ui_listbox_create(form_id,"get_item",x_loc,y_loc,FORM_WID_SML,item_numbers,"2D Orthotropic Database","SINGLE",FALSE)
+    list_id=ui_listbox_create(form_id,"get_item",x_loc,y_loc,DBOX_WID_SINGLE,item_numbers,"2D Orthotropic Database","SINGLE",FALSE)
 
     ui_listbox_items_create(list_id,widget_names,widget_labels,item_numbers,WIDGET_NULL)
 

@@ -1,0 +1,93 @@
+#include "appforms.p"
+
+CLASS Export_Static
+
+  CLASSWIDE WIDGET form_id,file_button,list_id,apply_button,cancel_button
+
+  CLASSWIDE STRING group_names[100](VIRTUAL)
+
+  CLASSWIDE STRING group_labels[100](VIRTUAL)
+
+  CLASSWIDE INTEGER group_numbers
+
+  FUNCTION init() 
+    GLOBAL WIDGET file_id
+    REAL x_loc,y_loc
+
+    x_loc=UNFRAMED_L_MARGIN
+    y_loc=FORM_T_MARGIN
+    group_numbers=20
+
+    $ 创建表单
+    form_id=ui_form_create("",FORM_X_LOC,FORM_Y_LOC, "UL",FORM_WID_SML,FORM_HGT_HALF, "Static Analysis Result Export", "" )
+    $ 选择文件
+    file_id=ui_databox_create(form_id,"",x_loc,y_loc,0.0,DBOX_WID_SINGLE,"Select *.xdb:","",TRUE,"STRING",1)
+    y_loc+= DBOX_HGT_LABOVE+ INTER_WIDGET_SPACE
+    file_button=ui_button_create(form_id, "select_file", BUTTON_HALF_X_LOC1, y_loc, BUTTON_WID_HALF, 0.,"Select File", FALSE, FALSE)
+    y_loc+= DBOX_HGT_LABOVE+ INTER_WIDGET_SPACE
+    $ 创建list列表
+    list_id=ui_listbox_create(form_id,"",x_loc,y_loc,DBOX_WID_SINGLE,group_numbers,"Select Group:","MULTIPLE",FALSE)
+
+    $ ui_listbox_items_create(list_id,group_names,group_labels,group_numbers,WIDGET_NULL)
+
+    ui_wid_set(list_id,"ROWS",20)  /*设置列表一次显示数据量*/
+
+    y_loc+= DBOX_HGT_LABOVE*10+ INTER_WIDGET_SPACE
+
+    $ 创建按钮
+    apply_button=ui_button_create(form_id, "apply", BUTTON_HALF_X_LOC1, y_loc, BUTTON_WID_HALF, 0.,"Apply", FALSE, FALSE)
+    
+    cancel_button=ui_button_create(form_id, "cancel", BUTTON_HALF_X_LOC2, y_loc, BUTTON_WID_HALF, 0.,"Cancel", FALSE, FALSE)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+    END FUNCTION
+
+    FUNCTION display()
+        ui_form_display("Export_Static")
+    END FUNCTION
+
+    FUNCTION select_file()
+        ui_exec_function("File_Form","display")
+    END FUNCTION
+    $ 应用选择
+    FUNCTION apply()
+        
+    END FUNCTION
+  
+    FUNCTION cancel()
+    ui_form_hide("Export_Static")
+    END FUNCTION
+
+END CLASS
+
+CLASS File_Form
+
+    CLASSWIDE WIDGET form_id,file_widget
+
+    FUNCTION init() 
+        REAL x_loc,y_loc
+
+        x_loc=UNFRAMED_L_MARGIN
+        y_loc=FORM_T_MARGIN
+
+        $ 创建表单
+        form_id=ui_form_create("",FORM_X_LOC_MED_CEN,FORM_Y_LOC_HALF_CEN, "UL",FORM_WID_MED,FORM_HGT_HALF, "Select Result File", "" )
+        $ 选择文件
+        file_widget=ui_file_create(form_id,"file_select",FORM_L_MARGIN,FORM_T_MARGIN,FILE_WID_DOUBLE,6,"Filter","*.xdb","Directories","Database List","Existing Database Name","","OK","Filter","Cancel")
+    END FUNCTION 
+    FUNCTION display()
+   	    ui_form_display("File_Form")
+    END FUNCTION
+
+    FUNCTION file_select(pathname,type)
+   	    STRING pathname[],type[]
+        GLOBAL STRING name[100]
+        GLOBAL WIDGET file_id
+        IF(type=="CANCEL")THEN
+            ui_form_hide("File_Form")
+        ELSE
+            ui_wid_set(file_id,"VALUE",pathname)
+            ui_form_hide("File_Form")
+        END IF
+    END FUNCTION
+
+END CLASS

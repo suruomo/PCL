@@ -5,7 +5,7 @@ CLASS My_Menu
 
    FUNCTION init()
 
-      WIDGET menubar_id, usermenu_id,model_id
+      WIDGET menubar_id, usermenu_id,model_id,result_id
 
       menubar_id = uil_primary.get_menubar_id()
 	  
@@ -14,15 +14,23 @@ CLASS My_Menu
        */
       usermenu_id = ui_menu_create(                      @
                     /* parent   */  menubar_id,          @
-                    /* callback */  "main_menu",           @
+                    /* callback */  "",           @
                     /* label    */  "My_System" )
 	   /*
        * 创建二级菜单
        */			
-	  model_id=ui_menu_create(                      @
+	   model_id=ui_menu_create(                      @
                     /* parent   */  usermenu_id,          @
                     /* callback */  "model_menu",           @
                     /* label    */  "Create Model" )
+
+      /*
+       * 创建二级菜单
+       */			
+	   result_id=ui_menu_create(                      @
+                    /* parent   */  usermenu_id,          @
+                    /* callback */  "result_menu",           @
+                    /* label    */  "Results Report" )
 
       /*
        * 创建菜单项
@@ -35,13 +43,16 @@ CLASS My_Menu
       /* Toggleable */   FALSE )
 	  
       ui_item_create(                                    @
-      /* parent     */   usermenu_id,                    @
-      /* callback   */   "result",                        @
-      /* label      */   "Results",                       @
+      /* parent     */   result_id,                    @
+      /* callback   */   "static_analysis",                        @
+      /* label      */   "Static Analysis Result",                       @
       /* Toggleable */   FALSE )
 	
-	  
-
+      ui_item_create(                                    @
+      /* parent     */   result_id,                    @
+      /* callback   */   "mode_analysis",                        @
+      /* label      */   "Mode Analysis Result",                       @
+      /* Toggleable */   FALSE )
 
    END FUNCTION
 
@@ -58,15 +69,29 @@ CLASS My_Menu
    END FUNCTION
    
    /*
-    * 主菜单响应
+    * 结果导出菜单响应
     */
-   FUNCTION main_menu( item_name )
+   FUNCTION result_menu( item_name )
 
     STRING item_name[]
 	  
-	SWITCH(item_name)
-		CASE("result")
-			ui_write("start getting results....")
+	 SWITCH(item_name)
+		CASE("static_analysis")
+			 IF(db_is_open()==TRUE)THEN
+            ui_exec_function("Export_Static","init")
+            Export_Static.display()
+         ELSE
+            xf_error_start("No Database Opening!") 
+            xf_error_end()
+         END IF
+      CASE("mode_analysis")
+			 IF(db_is_open()==TRUE)THEN
+            ui_exec_function("Export_Mode","init")
+            Export_Mode.display()
+         ELSE
+            xf_error_start("No Database Opening!") 
+            xf_error_end()
+         END IF
 	END SWITCH
 
    END FUNCTION
@@ -78,7 +103,7 @@ CLASS My_Menu
 
     STRING item_name[]
 	  
-	SWITCH(item_name)
+	 SWITCH(item_name)
 		CASE("material")
          IF(db_is_open()==TRUE)THEN
             ui_write("start creating material....")

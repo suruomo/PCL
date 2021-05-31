@@ -470,7 +470,7 @@ END IF
 
 
 $ 创建list列表
-list_id=ui_listbox_create(form_id,"get_item",x_loc,y_loc,uil_form_sizes.form_wid( 1 ),item_numbers,"2D Orthotropic Database","SINGLE",FALSE)
+list_id=ui_listbox_create(form_id,"get_item",x_loc,y_loc,uil_form_sizes.dbox_wid( 1 ),item_numbers,"2D Orthotropic Database","SINGLE",FALSE)
 
 
 ui_listbox_items_create(list_id,widget_names,widget_labels,item_numbers,WIDGET_NULL)
