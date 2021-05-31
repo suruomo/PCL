@@ -80,9 +80,14 @@ CLASS My_Menu
 	  
 	SWITCH(item_name)
 		CASE("material")
-			ui_write("start creating material....")
-			ui_exec_function("Create_Material","init")
-			ui_exec_function("Create_Material","display")
+         IF(db_is_open()==TRUE)THEN
+            ui_write("start creating material....")
+            ui_exec_function("Create_Material","init")
+            ui_exec_function("Create_Material","display")
+         ELSE
+            xf_error_start("No Database Opening!") 
+            xf_error_end()
+         END IF
 	END SWITCH
 
    END FUNCTION
