@@ -263,8 +263,6 @@ INTEGER i
 STRING name[100]
 
 
-
-
 x_loc=uil_form_sizes.unframed_margin( 1 )
 y_loc=uil_form_sizes.form_margin( 3 )
 group_numbers=0
@@ -335,10 +333,14 @@ ui_exec_function("File_Form","display")
 END FUNCTION
 $ 应用选择
 FUNCTION apply()
-LOGICAL flag
-ui_wid_get(loadBCs_toggle_id,"VALUE",flag)
-IF(flag==TRUE)THEN
+LOGICAL load_flag,mat_flag
+ui_wid_get(loadBCs_toggle_id,"VALUE",load_flag)
+IF(load_flag==TRUE)THEN
 Export_Static.export_loadBCs()
+END IF
+ui_wid_get(material_toggle_id,"VALUE",mat_flag)
+IF(mat_flag==TRUE)THEN
+Export_Static.export_material()
 END IF
 
 
@@ -388,6 +390,92 @@ application_type_string=Export_Static.get_application_type_string(application_ty
 ui_write(load_case_name//"*"//type//"*"//str_from_integer(load_ids(i))//"*"//load_name//"*"//@
 load_type_string//"*"//application_type_string)
 END FOR
+END IF
+END IF
+END IF
+END FUNCTION
+
+
+
+
+FUNCTION export_material()
+STRING material_name[64]
+INTEGER material_id,cat,lin,dir,type,word_ids(VIRTUAL),field_ids(VIRTUAL),num_words,p
+REAL word_values(VIRTUAL)
+REAL EM,PR,SM,D,TEC,SDC,RT
+
+
+IF(db_get_all_material_names()==0)THEN
+IF(db_get_next_material_name(material_name,material_id,cat,lin,dir,type)==0)THEN
+IF(cat==1)THEN
+db_get_matl_prop_value_count(material_id,num_words)
+sys_allocate_array(word_ids,1,num_words)
+sys_allocate_array(field_ids,1,num_words)
+sys_allocate_array(word_values,1,num_words)
+db_get_matl_prop_value(material_id,word_ids,field_ids,word_values)
+$ ui_write("Elastic Modulus:"//str_from_real(word_values(1))//"  Possion Radio:"//str_from_real(word_values(2))//"  Density:"//str_from_real(word_values(3)))
+$ 赋值材料属性
+p=mth_array_search(word_ids,2,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+EM=word_values(p)
+ui_write(str_from_real(EM))
+END IF
+END IF
+p=mth_array_search(word_ids,5,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+PR=word_values(p)
+ui_write(str_from_real(PR))
+END IF
+END IF
+p=mth_array_search(word_ids,8,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+SM=word_values(p)
+ui_write(str_from_real(SM))
+END IF
+END IF
+p=mth_array_search(word_ids,16,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+D=word_values(p)
+ui_write(str_from_real(D))
+END IF
+END IF
+p=mth_array_search(word_ids,24,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+TEC=word_values(p)
+ui_write(str_from_real(TEC))
+END IF
+END IF
+p=mth_array_search(word_ids,30,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+SDC=word_values(p)
+ui_write(str_from_real(SDC))
+END IF
+END IF
+p=mth_array_search(word_ids,1,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+RT=word_values(p)
+ui_write(str_from_real(RT))
+END IF
+END IF
+
+
+
+
+ELSE IF(cat==5)THEN
+db_get_matl_prop_value_count(material_id,num_words)
+sys_allocate_array(word_ids,1,num_words)
+sys_allocate_array(field_ids,1,num_words)
+sys_allocate_array(word_values,1,num_words)
+db_get_matl_prop_value(material_id,word_ids,field_ids,word_values)
+$ ui_write("Elastic Modulus11:"//str_from_real(word_values(1))//"Elastic Modulus22:"//str_from_real(word_values(2))@
+$ //"  Possion Radio12:"//str_from_real(word_values(3))//"  Shear Modulus12:"//str_from_real(word_values(4))//"  Density:"//str_from_real(word_values(7))"  coeff22:"//str_from_real(word_values(9)))
 END IF
 END IF
 END IF

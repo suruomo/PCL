@@ -73,17 +73,21 @@ CLASS Export_Static
     FUNCTION select_file()
         ui_exec_function("File_Form","display")
     END FUNCTION
+    
     $ 应用选择
     FUNCTION apply()
         LOGICAL load_flag,mat_flag
-        ui_wid_get(loadBCs_toggle_id,"VALUE",flag)
-        IF(flag==TRUE)THEN
+        ui_wid_get(loadBCs_toggle_id,"VALUE",load_flag)
+        $ 1.提取各工况载荷约束信息
+        IF(load_flag==TRUE)THEN
             Export_Static.export_loadBCs()
         END IF
-         ui_wid_get(material_toggle_id,"VALUE",flag)
-        IF(flag==TRUE)THEN
+        $ 2.提取模型材料信息
+        ui_wid_get(material_toggle_id,"VALUE",mat_flag)
+        IF(mat_flag==TRUE)THEN
             Export_Static.export_material()
         END IF
+
   
     END FUNCTION
 
@@ -130,7 +134,160 @@ CLASS Export_Static
 
     /*2.提取模型材料信息*/
     FUNCTION export_material()
-        
+        STRING material_name[64]
+        INTEGER material_id,cat,lin,dir,type,word_ids(VIRTUAL),field_ids(VIRTUAL),num_words,p
+        REAL word_values(VIRTUAL)
+        $ Isotropic材料属性
+        REAL EM,PR,SM,D,TEC,SDC,RT 
+        $ 2D Orthotropic材料属性
+        REAL EM11,EM22,PR12,SM12,SM23,SM13,D,TEC11,TEC22,SDC1,RT1
+
+        IF(db_get_all_material_names()==0)THEN
+            IF(db_get_next_material_name(material_name,material_id,cat,lin,dir,type)==0)THEN
+                IF(cat==1)THEN /*Isotropic 类别是1*/
+                    db_get_matl_prop_value_count(material_id,num_words) /*材料属性字段个数*/
+                    sys_allocate_array(word_ids,1,num_words)
+                    sys_allocate_array(field_ids,1,num_words)
+                    sys_allocate_array(word_values,1,num_words)
+                    db_get_matl_prop_value(material_id,word_ids,field_ids,word_values) /*获取材料数据*/
+                    $ 赋值材料属性
+                    p=mth_array_search(word_ids,2,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            EM=word_values(p)
+                            ui_write(str_from_real(EM))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,5,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            PR=word_values(p)
+                            ui_write(str_from_real(PR))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,8,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            SM=word_values(p)
+                            ui_write(str_from_real(SM))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,16,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            D=word_values(p)
+                            ui_write(str_from_real(D))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,24,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            TEC=word_values(p)
+                            ui_write(str_from_real(TEC))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,30,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            SDC=word_values(p)
+                            ui_write(str_from_real(SDC))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,1,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            RT=word_values(p)
+                            ui_write(str_from_real(RT))
+                        END IF
+                    END IF
+            
+                ELSE IF(cat==5)THEN /*2D Orthotropic类别是5*/
+                    db_get_matl_prop_value_count(material_id,num_words) /*材料属性字段个数*/
+                    sys_allocate_array(word_ids,1,num_words)
+                    sys_allocate_array(field_ids,1,num_words)
+                    sys_allocate_array(word_values,1,num_words)
+                    db_get_matl_prop_value(material_id,word_ids,field_ids,word_values) /*获取材料数据*/
+                    $ 赋值材料属性
+                    p=mth_array_search(word_ids,2,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            EM11=word_values(p)
+                            ui_write(str_from_real(EM11))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,5,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            EM22=word_values(p)
+                            ui_write(str_from_real(EM22))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,8,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            PR12=word_values(p)
+                            ui_write(str_from_real(PR12))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,16,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            SM12=word_values(p)
+                            ui_write(str_from_real(SM12))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,24,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            SM23=word_values(p)
+                            ui_write(str_from_real(SM23))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,30,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            c=word_values(p)
+                            ui_write(str_from_real(SM13))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,1,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            D=word_values(p)
+                            ui_write(str_from_real(D))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,1,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            TEC11=word_values(p)
+                            ui_write(str_from_real(TEC11))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,1,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            TEC22=word_values(p)
+                            ui_write(str_from_real(TEC22))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,1,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            SDC1=word_values(p)
+                            ui_write(str_from_real(SDC1))
+                        END IF
+                    END IF
+                    p=mth_array_search(word_ids,1,FALSE)
+                    IF(p!=0)THEN
+                        IF(field_ids(p)==0)THEN
+                            RT1=word_values(p)
+                            ui_write(str_from_real(RT1))
+                        END IF
+                    END IF
+                END IF
+            END IF
+        END IF
     END FUNCTION
 
     FUNCTION get_load_type_string(load_type_integer)
