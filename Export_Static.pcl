@@ -2,7 +2,8 @@
 
 CLASS Export_Static
 
-    CLASSWIDE WIDGET form_id,loadBCs_toggle_id,material_toggle_id,file_button,list_id,apply_button,cancel_button
+    CLASSWIDE WIDGET form_id,file_button,list_id,loadBCs_toggle_id,material_toggle_id,displacement_toggle_id,@
+                     stress_toggle_id,strain_toggle_id,apply_button,cancel_button
 
     CLASSWIDE STRING group_names[100](VIRTUAL)
 
@@ -22,12 +23,12 @@ CLASS Export_Static
 
         $ 创建表单
         form_id=ui_form_create("",FORM_X_LOC,FORM_Y_LOC, "UL",FORM_WID_SML,FORM_HGT_HALF, "Static Analysis Result Export", "" )
-        $ 创建选择文件
+        $ 创建结果选择文件
         file_id=ui_databox_create(form_id,"",x_loc,y_loc,0.0,DBOX_WID_SINGLE,"Select *.xdb:","",TRUE,"STRING",1)
         y_loc+= DBOX_HGT_LABOVE+ INTER_WIDGET_SPACE
         file_button=ui_button_create(form_id, "select_file", BUTTON_HALF_X_LOC1, y_loc, BUTTON_WID_HALF, 0.,"Select File", FALSE, FALSE)
         y_loc+= DBOX_HGT_LABOVE
-        $ 创建选择项
+        $ 输出模型信息选择项
         ui_label_create(form_id,"",x_loc,y_loc,"Model Information:")
         y_loc+=INTER_WIDGET_SPACE*2
         ui_separator_create(form_id,"s1",x_loc,y_loc,FORM_WID_SML,TRUE)
@@ -57,8 +58,14 @@ CLASS Export_Static
 
         ui_wid_set(list_id,"ROWS",10)  /*设置列表一次显示数据量*/
 
-        y_loc+= DBOX_HGT_LABOVE*10+ INTER_WIDGET_SPACE
-
+        y_loc+= DBOX_HGT_LABOVE*5+ INTER_WIDGET_SPACE
+        $ 输出结果类型选择
+        ui_label_create(form_id,"",x_loc,y_loc,"Select Output Type:")
+        y_loc+=INTER_WIDGET_SPACE*2
+        displacement_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Displacement")
+        stress_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*DOUBLE_SPACE,y_loc,"Stress")
+        strain_toggle_id=ui_toggle_create(form_id,"",x_loc+ 6.5*DOUBLE_SPACE,y_loc,"Strain")
+        y_loc+= DBOX_HGT_LABOVE+ INTER_WIDGET_SPACE
         $ 创建按钮
         apply_button=ui_button_create(form_id, "apply", BUTTON_HALF_X_LOC1, y_loc, BUTTON_WID_HALF, 0.,"Apply", FALSE, FALSE)
         
@@ -73,12 +80,13 @@ CLASS Export_Static
     FUNCTION select_file()
         ui_exec_function("File_Form","display")
     END FUNCTION
-    
+
     $ 应用选择
     FUNCTION apply()
-        LOGICAL load_flag,mat_flag
-        ui_wid_get(loadBCs_toggle_id,"VALUE",load_flag)
+        LOGICAL load_flag,mat_flag,displacement_flag
+        
         $ 1.提取各工况载荷约束信息
+        ui_wid_get(loadBCs_toggle_id,"VALUE",load_flag)
         IF(load_flag==TRUE)THEN
             Export_Static.export_loadBCs()
         END IF
@@ -86,6 +94,11 @@ CLASS Export_Static
         ui_wid_get(material_toggle_id,"VALUE",mat_flag)
         IF(mat_flag==TRUE)THEN
             Export_Static.export_material()
+        END IF
+        $ 3.提取选中组的各工况的位移信息
+        ui_wid_get(displacement_toggle_id,"VALUE",displacement_flag)
+        IF(loadisplacement_flagd_flag==TRUE)THEN
+            Export_Static.export_displacement()
         END IF
 
   
@@ -140,7 +153,7 @@ CLASS Export_Static
         $ Isotropic材料属性
         REAL EM,PR,SM,D,TEC,SDC,RT 
         $ 2D Orthotropic材料属性
-        REAL EM11,EM22,PR12,SM12,SM23,SM13,D,TEC11,TEC22,SDC1,RT1
+        REAL EM11,EM22,PR12,SM12,SM23,SM13,D1,TEC11,TEC22,SDC1,RT1
 
         IF(db_get_all_material_names()==0)THEN
             IF(db_get_next_material_name(material_name,material_id,cat,lin,dir,type)==0)THEN
@@ -246,15 +259,15 @@ CLASS Export_Static
                     p=mth_array_search(word_ids,30,FALSE)
                     IF(p!=0)THEN
                         IF(field_ids(p)==0)THEN
-                            c=word_values(p)
+                            SM13=word_values(p)
                             ui_write(str_from_real(SM13))
                         END IF
                     END IF
                     p=mth_array_search(word_ids,1,FALSE)
                     IF(p!=0)THEN
                         IF(field_ids(p)==0)THEN
-                            D=word_values(p)
-                            ui_write(str_from_real(D))
+                            D1=word_values(p)
+                            ui_write(str_from_real(D1))
                         END IF
                     END IF
                     p=mth_array_search(word_ids,1,FALSE)
@@ -288,6 +301,12 @@ CLASS Export_Static
                 END IF
             END IF
         END IF
+    END FUNCTION
+
+    /*3.提取选中组的各工况位移信息*/
+    FUNCTION export_displacement()
+        
+       
     END FUNCTION
 
     FUNCTION get_load_type_string(load_type_integer)

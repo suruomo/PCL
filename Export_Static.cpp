@@ -244,7 +244,8 @@
 CLASS Export_Static
 
 
-CLASSWIDE WIDGET form_id,loadBCs_toggle_id,material_toggle_id,file_button,list_id,apply_button,cancel_button
+CLASSWIDE WIDGET form_id,file_button,list_id,loadBCs_toggle_id,material_toggle_id,displacement_toggle_id,@
+stress_toggle_id,strain_toggle_id,apply_button,cancel_button
 
 
 CLASSWIDE STRING group_names[100](VIRTUAL)
@@ -270,12 +271,12 @@ group_numbers=0
 
 $ 创建表单
 form_id=ui_form_create("",uil_form_sizes.form_x_loc( 1 ),uil_form_sizes.form_y_loc( 1 ), "UL",uil_form_sizes.form_wid( 1 ),uil_form_sizes.form_hgt( 3 ), "Static Analysis Result Export", "" )
-$ 创建选择文件
+$ 创建结果选择文件
 file_id=ui_databox_create(form_id,"",x_loc,y_loc,0.0,uil_form_sizes.dbox_wid( 1 ),"Select *.xdb:","",TRUE,"STRING",1)
 y_loc+= uil_form_sizes.dbox_hgt( 1 )+ uil_form_sizes.spacing( 8 )
 file_button=ui_button_create(form_id, "select_file", uil_form_sizes.button_x_loc1( 2 ), y_loc, uil_form_sizes.button_wid( 2 ), 0.,"Select File", FALSE, FALSE)
 y_loc+= uil_form_sizes.dbox_hgt( 1 )
-$ 创建选择项
+$ 输出模型信息选择项
 ui_label_create(form_id,"",x_loc,y_loc,"Model Information:")
 y_loc+=uil_form_sizes.spacing( 8 )*2
 ui_separator_create(form_id,"s1",x_loc,y_loc,uil_form_sizes.form_wid( 1 ),TRUE)
@@ -310,9 +311,14 @@ ui_listbox_items_create(list_id,group_names,group_labels,group_numbers,WIDGET_NU
 ui_wid_set(list_id,"ROWS",10)
 
 
-y_loc+= uil_form_sizes.dbox_hgt( 1 )*10+ uil_form_sizes.spacing( 8 )
-
-
+y_loc+= uil_form_sizes.dbox_hgt( 1 )*5+ uil_form_sizes.spacing( 8 )
+$ 输出结果类型选择
+ui_label_create(form_id,"",x_loc,y_loc,"Select Output Type:")
+y_loc+=uil_form_sizes.spacing( 8 )*2
+displacement_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Displacement")
+stress_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*uil_form_sizes.spacing( 7 ),y_loc,"Stress")
+strain_toggle_id=ui_toggle_create(form_id,"",x_loc+ 6.5*uil_form_sizes.spacing( 7 ),y_loc,"Strain")
+y_loc+= uil_form_sizes.dbox_hgt( 1 )+ uil_form_sizes.spacing( 8 )
 $ 创建按钮
 apply_button=ui_button_create(form_id, "apply", uil_form_sizes.button_x_loc1( 2 ), y_loc, uil_form_sizes.button_wid( 2 ), 0.,"Apply", FALSE, FALSE)
 
@@ -331,17 +337,23 @@ END FUNCTION
 FUNCTION select_file()
 ui_exec_function("File_Form","display")
 END FUNCTION
+
+
 $ 应用选择
 FUNCTION apply()
 LOGICAL load_flag,mat_flag
 ui_wid_get(loadBCs_toggle_id,"VALUE",load_flag)
+$ 1.提取各工况载荷约束信息
 IF(load_flag==TRUE)THEN
 Export_Static.export_loadBCs()
 END IF
+$ 2.提取模型材料信息
 ui_wid_get(material_toggle_id,"VALUE",mat_flag)
 IF(mat_flag==TRUE)THEN
 Export_Static.export_material()
 END IF
+
+
 
 
 END FUNCTION
@@ -402,7 +414,10 @@ FUNCTION export_material()
 STRING material_name[64]
 INTEGER material_id,cat,lin,dir,type,word_ids(VIRTUAL),field_ids(VIRTUAL),num_words,p
 REAL word_values(VIRTUAL)
+$ Isotropic材料属性
 REAL EM,PR,SM,D,TEC,SDC,RT
+$ 2D Orthotropic材料属性
+REAL EM11,EM22,PR12,SM12,SM23,SM13,D1,TEC11,TEC22,SDC1,RT1
 
 
 IF(db_get_all_material_names()==0)THEN
@@ -413,7 +428,6 @@ sys_allocate_array(word_ids,1,num_words)
 sys_allocate_array(field_ids,1,num_words)
 sys_allocate_array(word_values,1,num_words)
 db_get_matl_prop_value(material_id,word_ids,field_ids,word_values)
-$ ui_write("Elastic Modulus:"//str_from_real(word_values(1))//"  Possion Radio:"//str_from_real(word_values(2))//"  Density:"//str_from_real(word_values(3)))
 $ 赋值材料属性
 p=mth_array_search(word_ids,2,FALSE)
 IF(p!=0)THEN
@@ -466,16 +480,90 @@ END IF
 END IF
 
 
-
-
 ELSE IF(cat==5)THEN
 db_get_matl_prop_value_count(material_id,num_words)
 sys_allocate_array(word_ids,1,num_words)
 sys_allocate_array(field_ids,1,num_words)
 sys_allocate_array(word_values,1,num_words)
 db_get_matl_prop_value(material_id,word_ids,field_ids,word_values)
-$ ui_write("Elastic Modulus11:"//str_from_real(word_values(1))//"Elastic Modulus22:"//str_from_real(word_values(2))@
-$ //"  Possion Radio12:"//str_from_real(word_values(3))//"  Shear Modulus12:"//str_from_real(word_values(4))//"  Density:"//str_from_real(word_values(7))"  coeff22:"//str_from_real(word_values(9)))
+$ 赋值材料属性
+p=mth_array_search(word_ids,2,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+EM11=word_values(p)
+ui_write(str_from_real(EM11))
+END IF
+END IF
+p=mth_array_search(word_ids,5,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+EM22=word_values(p)
+ui_write(str_from_real(EM22))
+END IF
+END IF
+p=mth_array_search(word_ids,8,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+PR12=word_values(p)
+ui_write(str_from_real(PR12))
+END IF
+END IF
+p=mth_array_search(word_ids,16,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+SM12=word_values(p)
+ui_write(str_from_real(SM12))
+END IF
+END IF
+p=mth_array_search(word_ids,24,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+SM23=word_values(p)
+ui_write(str_from_real(SM23))
+END IF
+END IF
+p=mth_array_search(word_ids,30,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+SM13=word_values(p)
+ui_write(str_from_real(SM13))
+END IF
+END IF
+p=mth_array_search(word_ids,1,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+D1=word_values(p)
+ui_write(str_from_real(D1))
+END IF
+END IF
+p=mth_array_search(word_ids,1,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+TEC11=word_values(p)
+ui_write(str_from_real(TEC11))
+END IF
+END IF
+p=mth_array_search(word_ids,1,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+TEC22=word_values(p)
+ui_write(str_from_real(TEC22))
+END IF
+END IF
+p=mth_array_search(word_ids,1,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+SDC1=word_values(p)
+ui_write(str_from_real(SDC1))
+END IF
+END IF
+p=mth_array_search(word_ids,1,FALSE)
+IF(p!=0)THEN
+IF(field_ids(p)==0)THEN
+RT1=word_values(p)
+ui_write(str_from_real(RT1))
+END IF
+END IF
 END IF
 END IF
 END IF
