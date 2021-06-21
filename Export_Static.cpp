@@ -335,7 +335,7 @@ END FUNCTION
 
 $ 应用选择
 FUNCTION apply()
-LOGICAL load_flag,mat_flag,stress_flag
+LOGICAL load_flag,mat_flag,displacement_flag,stress_flag,strain_flag
 
 
 $ 1.提取各工况载荷约束信息
@@ -348,10 +348,20 @@ ui_wid_get(material_toggle_id,"VALUE",mat_flag)
 IF(mat_flag==TRUE)THEN
 Export_Static.export_material()
 END IF
-$ 3.提取选中组的各工况的应力信息
+$ 3.提取选中组的各工况的位移信息
+ui_wid_get(displacement_toggle_id,"VALUE",displacement_flag)
+IF(displacement_flag==TRUE)THEN
+Export_Static.export_displacement()
+END IF
+$ 4.提取选中组的各工况的应力信息
 ui_wid_get(stress_toggle_id,"VALUE",stress_flag)
 IF(stress_flag==TRUE)THEN
 Export_Static.export_stress()
+END IF
+$ 5.提取选中组的各工况的应变信息
+ui_wid_get(strain_toggle_id,"VALUE",strain_flag)
+IF(strain_flag==TRUE)THEN
+Export_Static.export_strain()
 END IF
 
 
@@ -573,6 +583,170 @@ END FUNCTION
 
 
 
+FUNCTION export_displacement()
+$ 定义组和工况变量
+INTEGER groups_selected_number,group_ids(VIRTUAL),group_id,loadcase_number,loadcase_id,loadcase_ids(VIRTUAL),i,status,j,k,g,l,m,s
+STRING group_name[32],group_names[32](VIRTUAL),loadcase_name[32],loadcase_names[32](VIRTUAL)
+$ 定义子工况变量
+INTEGER subcase_number,subcase_ids(VIRTUAL)
+$ 定义位移变量
+INTEGER displacement_number=4
+STRING displacement_labels[5](4)
+displacement_labels(1)="XX"
+displacement_labels(2)="YY"
+displacement_labels(3)="ZZ"
+displacement_labels(4)="MAG"
+$ 定义提取结果相关变量
+INTEGER num_elems,results_ids(5),data_type,resloc,nres,ids(VIRTUAL),nresults(VIRTUAL),minloc(12),maxloc(12),primary_id,secondary_id,primary_ids(VIRTUAL),secondary_ids(VIRTUAL),results_number,layer_number,layer_ids(VIRTUAL)
+STRING elem_list[50000],avg_method[20],avg_domain[20],extrap_method[20],complex_form[10],layer_labels[80](VIRTUAL),@
+subcase_name[31],location[3]
+REAL complex_angle,results(VIRTUAL)
+
+
+$ 初始化部分结果变量
+avg_method="DeriveAverage"
+avg_domain="All"
+extrap_method="ShapeFunc"
+complex_form=""
+complex_angle=0.0
+location="N"
+
+
+ui_wid_get(list_id,"NSELECTED",groups_selected_number)
+IF(groups_selected_number==0)THEN
+xf_error_start("Please select one group at least!")
+xf_error_end()
+ELSE
+$ 1.获取组
+sys_allocate_array(group_ids,1,groups_selected_number)
+sys_allocate_array(group_names,1,groups_selected_number)
+FOR(i=1 TO groups_selected_number)
+db_get_group_name(i,group_name)
+group_names(i)=group_name
+db_get_group_id(group_name,group_id)
+group_ids(i)=group_id
+END FOR
+loadsbcs_eval_all()
+$ 2.获取工况
+i=1
+IF(db_get_all_load_case_names()==0)THEN
+IF(db_get_next_load_case_name(loadcase_name)==0)THEN
+loadcase_number+=1
+END IF
+END IF
+sys_allocate_array(loadcase_ids,1,loadcase_number)
+sys_allocate_array(loadcase_names,1,loadcase_number)
+ui_write("---------------------------------load case start")
+IF(db_get_all_load_case_names()==0)THEN
+IF(db_get_next_load_case_name(loadcase_name)==0)THEN
+loadcase_names(i)=loadcase_name
+db_get_load_case_id(loadcase_name,loadcase_id)
+loadcase_ids(i)=loadcase_id
+ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
+i+=1
+END IF
+END IF
+ui_write("---------------------------------load case end")
+$ 3.遍历每组，每个工况下的子工况位移结果
+FOR(g=1 TO groups_selected_number)
+group_id=group_ids(g)
+group_name=group_names(g)
+Export_Static.get_elem_list(group_id,group_name,elem_list,num_elems)
+$ 遍历工况
+FOR(l=1 TO loadcase_number)
+loadcase_id=loadcase_ids(l)
+status=res_utl_get_subcases(loadcase_id,subcase_number,subcase_ids)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+ui_write("subcase num:"//str_from_integer(subcase_number))
+$ 获取结果
+status=res_utl_get_result_ids(loadcase_number,loadcase_ids,subcase_ids,results_number,primary_ids,secondary_ids)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+$ 遍历子工况-----Displacements Translational
+ui_write("---------------------------------Displacements Translational Start")
+FOR(k=1 TO subcase_number)
+db_get_sub_case_title(loadcase_id,subcase_ids(k),subcase_name)
+db_get_primary_res_id("Displacements",primary_id)
+db_get_secondary_res_id(primary_id,"Translational",secondary_id)
+results_ids(1)=loadcase_id
+results_ids(2)=subcase_ids(k)
+results_ids(3)=primary_id
+results_ids(4)=secondary_id
+status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+$ 遍历每个位移值
+FOR(m=1 TO layer_number)
+FOR(s=1 TO displacement_number)
+results_ids(5)=layer_ids(m)
+status=res_utl_extract_elem_results2(results_ids,elem_list,displacement_labels(s),location,@
+"",avg_method,avg_domain,extrap_method,complex_form,complex_angle,data_type,@
+resloc,nres,ids,nresults,results,minloc,maxloc)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+
+
+j = minloc(1)
+ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s), results(j) )
+j = maxloc(1)
+ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s),results(j) )
+END IF
+END FOR
+END FOR
+END IF
+END FOR
+ui_write("---------------------------------Displacements Translational END")
+$ 遍历子工况-----Displacements Rotational
+ui_write("---------------------------------Displacements Rotational Start")
+FOR(k=1 TO subcase_number)
+db_get_sub_case_title(loadcase_id,subcase_ids(k),subcase_name)
+db_get_primary_res_id("Displacements",primary_id)
+db_get_secondary_res_id(primary_id,"Rotational",secondary_id)
+results_ids(1)=loadcase_id
+results_ids(2)=subcase_ids(k)
+results_ids(3)=primary_id
+results_ids(4)=secondary_id
+status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+$ 遍历每个位移值
+FOR(m=1 TO layer_number)
+FOR(s=1 TO displacement_number)
+results_ids(5)=layer_ids(m)
+status=res_utl_extract_elem_results2(results_ids,elem_list,displacement_labels(s),location,@
+"",avg_method,avg_domain,extrap_method,complex_form,complex_angle,data_type,@
+resloc,nres,ids,nresults,results,minloc,maxloc)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+
+
+j = minloc(1)
+ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s), results(j) )
+j = maxloc(1)
+ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s),results(j) )
+END IF
+END FOR
+END FOR
+END IF
+END FOR
+ui_write("---------------------------------Displacements Rotational END")
+END IF
+END IF
+END FOR
+END FOR
+END IF
+END FUNCTION
+
+
+
+
 FUNCTION export_stress()
 $ 定义组和工况变量
 INTEGER groups_selected_number,group_ids(VIRTUAL),group_id,loadcase_number,loadcase_id,loadcase_ids(VIRTUAL),i,status,j,k,g,l,m,s
@@ -641,6 +815,7 @@ END IF
 END IF
 ui_write("---------------------------------load case end")
 $ 3.遍历每组，每个工况下的子工况应力结果
+ui_write("---------------------------------Stress Tensor Start")
 FOR(g=1 TO groups_selected_number)
 group_id=group_ids(g)
 group_name=group_names(g)
@@ -668,7 +843,7 @@ results_ids(3)=primary_id
 results_ids(4)=secondary_id
 status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
 IF(status==0)THEN
-$ 遍历m每层的每个应力值
+$ 遍历每层的每个应力值
 FOR(m=1 TO layer_number)
 FOR(s=1 TO stress_number)
 results_ids(5)=layer_ids(m)
@@ -693,6 +868,137 @@ END IF
 END IF
 END FOR
 END FOR
+ui_write("---------------------------------Stress Tensor END")
+END IF
+
+
+END FUNCTION
+
+
+
+
+FUNCTION export_strain()
+$ 定义组和工况变量
+INTEGER groups_selected_number,group_ids(VIRTUAL),group_id,loadcase_number,loadcase_id,loadcase_ids(VIRTUAL),i,status,j,k,g,l,m,s
+STRING group_name[32],group_names[32](VIRTUAL),loadcase_name[32],loadcase_names[32](VIRTUAL)
+$ 定义子工况变量
+INTEGER subcase_number,subcase_ids(VIRTUAL)
+$ 定义应变相关变量
+INTEGER strain_number=7
+STRING strain_labels[10](7)
+strain_labels(1)="XX"
+strain_labels(2)="YY"
+strain_labels(3)="ZZ"
+strain_labels(4)="XY"
+strain_labels(5)="YZ"
+strain_labels(6)="ZX"
+strain_labels(7)="VONM"
+$ 定义提取结果相关变量
+INTEGER num_elems,results_ids(5),data_type,resloc,nres,ids(VIRTUAL),nresults(VIRTUAL),minloc(12),maxloc(12),primary_id,secondary_id,primary_ids(VIRTUAL),secondary_ids(VIRTUAL),results_number,layer_number,layer_ids(VIRTUAL)
+STRING elem_list[50000],avg_method[20],avg_domain[20],extrap_method[20],complex_form[10],layer_labels[80](VIRTUAL),@
+subcase_name[31],location[3]
+REAL complex_angle,results(VIRTUAL)
+
+
+$ 初始化部分结果变量
+avg_method="DeriveAverage"
+avg_domain="All"
+extrap_method="ShapeFunc"
+complex_form=""
+complex_angle=0.0
+location="N"
+
+
+ui_wid_get(list_id,"NSELECTED",groups_selected_number)
+IF(groups_selected_number==0)THEN
+xf_error_start("Please select one group at least!")
+xf_error_end()
+ELSE
+$ 1.获取组
+sys_allocate_array(group_ids,1,groups_selected_number)
+sys_allocate_array(group_names,1,groups_selected_number)
+FOR(i=1 TO groups_selected_number)
+db_get_group_name(i,group_name)
+group_names(i)=group_name
+db_get_group_id(group_name,group_id)
+group_ids(i)=group_id
+END FOR
+loadsbcs_eval_all()
+$ 2.获取工况
+i=1
+IF(db_get_all_load_case_names()==0)THEN
+IF(db_get_next_load_case_name(loadcase_name)==0)THEN
+loadcase_number+=1
+END IF
+END IF
+sys_allocate_array(loadcase_ids,1,loadcase_number)
+sys_allocate_array(loadcase_names,1,loadcase_number)
+ui_write("---------------------------------load case start")
+IF(db_get_all_load_case_names()==0)THEN
+IF(db_get_next_load_case_name(loadcase_name)==0)THEN
+loadcase_names(i)=loadcase_name
+db_get_load_case_id(loadcase_name,loadcase_id)
+loadcase_ids(i)=loadcase_id
+ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
+i+=1
+END IF
+END IF
+ui_write("---------------------------------load case end")
+$ 3.遍历每组，每个工况下的子工况应变结果
+ui_write("---------------------------------Strain Tensor Start")
+FOR(g=1 TO groups_selected_number)
+group_id=group_ids(g)
+group_name=group_names(g)
+Export_Static.get_elem_list(group_id,group_name,elem_list,num_elems)
+$ 遍历工况
+FOR(l=1 TO loadcase_number)
+loadcase_id=loadcase_ids(l)
+status=res_utl_get_subcases(loadcase_id,subcase_number,subcase_ids)
+ui_write(str_from_integer(status))
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+ui_write("subcase num:"//str_from_integer(subcase_number))
+$ 获取结果
+status=res_utl_get_result_ids(loadcase_number,loadcase_ids,subcase_ids,results_number,primary_ids,secondary_ids)
+IF(status==0)THEN
+$ 遍历子工况
+FOR(k=1 TO subcase_number)
+db_get_sub_case_title(loadcase_id,subcase_ids(k),subcase_name)
+db_get_primary_res_id("Strain Tensor",primary_id)
+db_get_secondary_res_id(primary_id,"",secondary_id)
+results_ids(1)=loadcase_id
+results_ids(2)=subcase_ids(k)
+results_ids(3)=primary_id
+results_ids(4)=secondary_id
+status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
+IF(status==0)THEN
+$ 遍历每层的每个应变值
+FOR(m=1 TO layer_number)
+FOR(s=1 TO strain_number)
+results_ids(5)=layer_ids(m)
+status=res_utl_extract_elem_results2(results_ids,elem_list,strain_labels(s),location,@
+"",avg_method,avg_domain,extrap_method,complex_form,complex_angle,data_type,@
+resloc,nres,ids,nresults,results,minloc,maxloc)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+
+
+j = minloc(1)
+ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), strain_labels(s), results(j) )
+j = maxloc(1)
+ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), strain_labels(s),results(j) )
+END IF
+END FOR
+END FOR
+END IF
+END FOR
+END IF
+END IF
+END FOR
+END FOR
+ui_write("---------------------------------Strain Tensor END")
 END IF
 
 
