@@ -382,8 +382,11 @@ INTEGER load_case_id,load_case_type,num_loads,load_ids(32),loads_priorities(32),
 REAL evaluation_point
 
 
-STRING load_name[32],load_type_string[32],application_type_string[32]
-INTEGER application_type_integer,load_type_integer,target_elem_dim,dyn_flag,coord_id
+STRING load_name[32],load_type_string[32],application_type_string[64],elem_dimension_string[32]
+INTEGER application_type_integer,load_type_integer,elem_dimension_integer,dyn_flag,coord_id
+$ 存放结果
+INTEGER index=1
+STRING lbc_res[128](15)
 
 
 loadsbcs_eval_all()
@@ -404,18 +407,27 @@ type="Frequency Dependent"
 END IF
 
 
-ui_write("Load Case Name:"//load_case_name//"  Load Case Type:"//type//"  Num Loads:"//str_from_integer(num_loads)//"  Description:"//load_case_des)
+$ ui_write("Load Case Name:"//load_case_name//"  Load Case Type:"//type//"  Num Loads:"//str_from_integer(num_loads)//"  Description:"//load_case_des)
 $ 提取各工况下的载荷约束信息
 FOR(i=1 TO num_loads)
-db_get_lbc(load_ids(i),load_name,load_type_integer,application_type_integer,target_elem_dim,coord_id,dyn_flag)
+db_get_lbc(load_ids(i),load_name,load_type_integer,application_type_integer,elem_dimension_integer,coord_id,dyn_flag)
 load_type_string=Export_Static.get_load_type_string(load_type_integer)
 application_type_string=Export_Static.get_application_type_string(application_type_integer)
-ui_write(load_case_name//"*"//type//"*"//str_from_integer(load_ids(i))//"*"//load_name//"*"//@
-load_type_string//"*"//application_type_string)
+elem_dimension_string=Export_Static.get_elem_dimension_string(elem_dimension_integer)
+$ ui_write(load_case_name//"*"//type//"*"//str_from_integer(load_ids(i))//"*"//load_name//"*"//@
+$ load_type_string//"*"//application_type_string//"*"//elem_dimension_string)
+lbc_res(index)=load_case_name//"*"//type//"*"//str_from_integer(load_ids(i))//"*"//load_name//"*"//@
+load_type_string//"*"//application_type_string//"*"//elem_dimension_string
+index+=1
 END FOR
 END IF
 END IF
 END IF
+$ 测试输出结果数组
+INTEGER p=1
+FOR(p=1 TO index-1)
+ui_write(lbc_res(p))
+END FOR
 END FUNCTION
 
 
@@ -1106,7 +1118,7 @@ END FUNCTION
 
 FUNCTION get_application_type_string(application_type_integer)
 INTEGER application_type_integer
-STRING application_type_string[32]
+STRING application_type_string[64]
 SWITCH(application_type_integer)
 CASE(1)
 application_type_string="nodes"
@@ -1116,6 +1128,23 @@ CASE(3)
 application_type_string="elements and varying over the element"
 END SWITCH
 RETURN application_type_string
+END FUNCTION
+
+
+FUNCTION get_elem_dimension_string(elem_dimension_integer)
+INTEGER elem_dimension_integer
+STRING elem_dimension_string[32]
+SWITCH(elem_dimension_integer)
+CASE(1)
+elem_dimension_string="line elements"
+CASE(2)
+elem_dimension_string="surface elements"
+CASE(3)
+elem_dimension_string="solid elements"
+DEFAULT
+elem_dimension_string="node"
+END SWITCH
+RETURN elem_dimension_string
 END FUNCTION
 
 
@@ -1148,8 +1177,6 @@ ui_write("num elems:"//str_from_integer(num_elems))
 END FUNCTION
 
 
-
-
 FUNCTION cancel()
 ui_form_hide("Export_Static")
 END FUNCTION
@@ -1178,6 +1205,8 @@ $ 选择文件
 file_widget=ui_file_create(form_id,"file_select",uil_form_sizes.form_margin( 1 ),uil_form_sizes.form_margin( 3 ),uil_form_sizes.file_wid( 2 ),6,"Filter",@
 "*.xdb","Directories","Database List","Existing Database Name","","OK","Filter","Cancel")
 END FUNCTION
+
+
 FUNCTION display()
 	 ui_form_display("File_Form")
 END FUNCTION
