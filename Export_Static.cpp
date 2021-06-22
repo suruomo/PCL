@@ -441,11 +441,15 @@ $ Isotropic材料属性
 REAL EM,PR,SM,D,TEC,SDC,RT
 $ 2D Orthotropic材料属性
 REAL EM11,EM22,PR12,SM12,SM23,SM13,D1,TEC11,TEC22,SDC1,RT1
+$ 保存结果
+INTEGER index=1
+STRING res[256],material_res[256](15)
 
 
 IF(db_get_all_material_names()==0)THEN
 IF(db_get_next_material_name(material_name,material_id,cat,lin,dir,type)==0)THEN
 IF(cat==1)THEN
+res=""
 db_get_matl_prop_value_count(material_id,num_words)
 sys_allocate_array(word_ids,1,num_words)
 sys_allocate_array(field_ids,1,num_words)
@@ -457,6 +461,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 EM=word_values(p)
 ui_write(str_from_real(EM))
+res=res//"Elastic Modulus:"//str_from_real(EM)//","
 END IF
 END IF
 p=mth_array_search(word_ids,5,FALSE)
@@ -464,6 +469,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 PR=word_values(p)
 ui_write(str_from_real(PR))
+res=res//"Possion Ratio:"//str_from_real(PR)//","
 END IF
 END IF
 p=mth_array_search(word_ids,8,FALSE)
@@ -471,6 +477,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM=word_values(p)
 ui_write(str_from_real(SM))
+res=res//"Shear Modulus:"//str_from_real(SM)//","
 END IF
 END IF
 p=mth_array_search(word_ids,16,FALSE)
@@ -478,6 +485,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 D=word_values(p)
 ui_write(str_from_real(D))
+res=res//"Density:"//str_from_real(D)//","
 END IF
 END IF
 p=mth_array_search(word_ids,24,FALSE)
@@ -485,6 +493,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 TEC=word_values(p)
 ui_write(str_from_real(TEC))
+res=res//"Thermal Expan Coeff:"//str_from_real(TEC)//","
 END IF
 END IF
 p=mth_array_search(word_ids,30,FALSE)
@@ -492,6 +501,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SDC=word_values(p)
 ui_write(str_from_real(SDC))
+res=res//"Structural Damping Coeff:"//str_from_real(SDC)//","
 END IF
 END IF
 p=mth_array_search(word_ids,1,FALSE)
@@ -499,22 +509,27 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 RT=word_values(p)
 ui_write(str_from_real(RT))
+res=res//"Reference Temperature:"//str_from_real(RT)//","
 END IF
 END IF
-
-
+material_res(index)=res
+index+=1
 ELSE IF(cat==5)THEN
+res=""
 db_get_matl_prop_value_count(material_id,num_words)
 sys_allocate_array(word_ids,1,num_words)
 sys_allocate_array(field_ids,1,num_words)
 sys_allocate_array(word_values,1,num_words)
 db_get_matl_prop_value(material_id,word_ids,field_ids,word_values)
+
+
 $ 赋值材料属性
 p=mth_array_search(word_ids,2,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 EM11=word_values(p)
 ui_write(str_from_real(EM11))
+res=res//"Elastic Modulus 11:"//str_from_real(EM11)//","
 END IF
 END IF
 p=mth_array_search(word_ids,5,FALSE)
@@ -522,6 +537,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 EM22=word_values(p)
 ui_write(str_from_real(EM22))
+res=res//"Elastic Modulus 22:"//str_from_real(EM22)//","
 END IF
 END IF
 p=mth_array_search(word_ids,8,FALSE)
@@ -529,6 +545,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 PR12=word_values(p)
 ui_write(str_from_real(PR12))
+res=res//"Possion Ratio 12:"//str_from_real(PR12)//","
 END IF
 END IF
 p=mth_array_search(word_ids,16,FALSE)
@@ -536,6 +553,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM12=word_values(p)
 ui_write(str_from_real(SM12))
+res=res//"Shear Modulus 12:"//str_from_real(SM12)//","
 END IF
 END IF
 p=mth_array_search(word_ids,24,FALSE)
@@ -543,6 +561,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM23=word_values(p)
 ui_write(str_from_real(SM23))
+res=res//"Shear Modulus 23:"//str_from_real(SM23)//","
 END IF
 END IF
 p=mth_array_search(word_ids,30,FALSE)
@@ -550,6 +569,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM13=word_values(p)
 ui_write(str_from_real(SM13))
+res=res//"Shear Modulus 13:"//str_from_real(SM13)//","
 END IF
 END IF
 p=mth_array_search(word_ids,1,FALSE)
@@ -557,6 +577,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 D1=word_values(p)
 ui_write(str_from_real(D1))
+res=res//"Density:"//str_from_real(D1)//","
 END IF
 END IF
 p=mth_array_search(word_ids,1,FALSE)
@@ -564,6 +585,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 TEC11=word_values(p)
 ui_write(str_from_real(TEC11))
+res=res//"Thermal Expan Coeff 11:"//str_from_real(TEC11)//","
 END IF
 END IF
 p=mth_array_search(word_ids,1,FALSE)
@@ -571,6 +593,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 TEC22=word_values(p)
 ui_write(str_from_real(TEC22))
+res=res//"Thermal Expan Coeff 22:"//str_from_real(TEC22)//","
 END IF
 END IF
 p=mth_array_search(word_ids,1,FALSE)
@@ -578,6 +601,7 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SDC1=word_values(p)
 ui_write(str_from_real(SDC1))
+res=res//"Structural Damping Coeff:"//str_from_real(SDC1)//","
 END IF
 END IF
 p=mth_array_search(word_ids,1,FALSE)
@@ -585,11 +609,19 @@ IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 RT1=word_values(p)
 ui_write(str_from_real(RT1))
+res=res//"Reference Temperature:"//str_from_real(RT1)//","
+END IF
+END IF
+material_res(index)=res
+index+=1
 END IF
 END IF
 END IF
-END IF
-END IF
+$ 测试输出结果数组
+INTEGER o=1
+FOR(o=1 TO index-1)
+ui_write(material_res(o))
+END FOR
 END FUNCTION
 
 
