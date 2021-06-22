@@ -601,8 +601,9 @@ INTEGER num_elems,results_ids(5),data_type,resloc,nres,ids(VIRTUAL),nresults(VIR
 STRING elem_list[50000],avg_method[20],avg_domain[20],extrap_method[20],complex_form[10],layer_labels[80](VIRTUAL),@
 subcase_name[31],location[3]
 REAL complex_angle,results(VIRTUAL)
-
-
+$ 存放结果数组
+INTEGER index,number
+STRING min_res[128],max_res[128],translational_min[128](VIRTUAL),translational_max[128](VIRTUAL),rotational_min[128](VIRTUAL),rotational_max[128](VIRTUAL)
 $ 初始化部分结果变量
 avg_method="DeriveAverage"
 avg_domain="All"
@@ -652,7 +653,7 @@ FOR(g=1 TO groups_selected_number)
 group_id=group_ids(g)
 group_name=group_names(g)
 Export_Static.get_elem_list(group_id,group_name,elem_list,num_elems)
-$ 遍历工况
+$ 遍历
 FOR(l=1 TO loadcase_number)
 loadcase_id=loadcase_ids(l)
 status=res_utl_get_subcases(loadcase_id,subcase_number,subcase_ids)
@@ -665,6 +666,8 @@ status=res_utl_get_result_ids(loadcase_number,loadcase_ids,subcase_ids,results_n
 IF(status!=0) THEN
 msg_to_form( status, 4, 0, 0, 0., "" )
 ELSE
+
+
 $ 遍历子工况-----Displacements Translational
 ui_write("---------------------------------Displacements Translational Start")
 FOR(k=1 TO subcase_number)
@@ -679,6 +682,13 @@ status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels
 IF(status!=0) THEN
 msg_to_form( status, 4, 0, 0, 0., "" )
 ELSE
+$ 初始化结果数组
+number=groups_selected_number*loadcase_number*subcase_number*layer_number
+index=1
+min_res=""
+max_res=""
+sys_allocate_array(translational_min,1,number)
+sys_allocate_array(translational_max,1,number)
 $ 遍历每个位移值
 FOR(m=1 TO layer_number)
 FOR(s=1 TO displacement_number)
@@ -693,10 +703,23 @@ ELSE
 
 j = minloc(1)
 ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s), results(j) )
+min_res=min_res//str_from_real(results(j))//"*"
 j = maxloc(1)
 ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s),results(j) )
+max_res=max_res//str_from_real(results(j))//"*"
 END IF
 END FOR
+translational_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
+str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)
+translational_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
+str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)
+index+=1
+END FOR
+$ 测试输出结果数组
+INTEGER p
+FOR(p=1 TO number)
+ui_write(translational_min(p))
+ui_write(translational_max(p))
 END FOR
 END IF
 END FOR
@@ -715,6 +738,13 @@ status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels
 IF(status!=0) THEN
 msg_to_form( status, 4, 0, 0, 0., "" )
 ELSE
+$ 初始化结果数组
+number=groups_selected_number*loadcase_number*subcase_number*layer_number
+index=1
+min_res=""
+max_res=""
+sys_allocate_array(rotational_min,1,number)
+sys_allocate_array(rotational_max,1,number)
 $ 遍历每个位移值
 FOR(m=1 TO layer_number)
 FOR(s=1 TO displacement_number)
@@ -729,10 +759,22 @@ ELSE
 
 j = minloc(1)
 ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s), results(j) )
+min_res=min_res//str_from_real(results(j))//"*"
 j = maxloc(1)
 ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), displacement_labels(s),results(j) )
+max_res=max_res//str_from_real(results(j))//"*"
 END IF
 END FOR
+rotational_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
+str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)
+rotational_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
+str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)
+index+=1
+END FOR
+$ 测试输出结果数组
+FOR(p=1 TO number)
+ui_write(rotational_min(p))
+ui_write(rotational_max(p))
 END FOR
 END IF
 END FOR
@@ -768,8 +810,9 @@ INTEGER num_elems,results_ids(5),data_type,resloc,nres,ids(VIRTUAL),nresults(VIR
 STRING elem_list[50000],avg_method[20],avg_domain[20],extrap_method[20],complex_form[10],layer_labels[80](VIRTUAL),@
 subcase_name[31],location[3]
 REAL complex_angle,results(VIRTUAL)
-
-
+$ 存放结果数组
+INTEGER index,number
+STRING min_res[128],max_res[128],stress_min[128](VIRTUAL),stress_max[128](VIRTUAL)
 $ 初始化部分结果变量
 avg_method="DeriveAverage"
 avg_domain="All"
@@ -843,6 +886,13 @@ results_ids(3)=primary_id
 results_ids(4)=secondary_id
 status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
 IF(status==0)THEN
+$ 初始化结果数组
+number=groups_selected_number*loadcase_number*subcase_number*layer_number
+index=1
+min_res=""
+max_res=""
+sys_allocate_array(stress_min,1,number)
+sys_allocate_array(stress_max,1,number)
 $ 遍历每层的每个应力值
 FOR(m=1 TO layer_number)
 FOR(s=1 TO stress_number)
@@ -857,10 +907,23 @@ ELSE
 
 j = minloc(1)
 ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), stress_labels(s), results(j) )
+min_res=min_res//str_from_real(results(j))//"*"
 j = maxloc(1)
 ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), stress_labels(s),results(j) )
+max_res=max_res//str_from_real(results(j))//"*"
 END IF
 END FOR
+stress_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
+str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)//str_token(min_res,"*",5,FALSE)//"*"//str_token(min_res,"*",6,FALSE)//"*"//str_token(min_res,"*",7,FALSE)
+stress_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
+str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
+index+=1
+END FOR
+$ 测试输出结果数组
+INTEGER p
+FOR(p=1 TO number)
+ui_write(stress_min(p))
+ui_write(stress_max(p))
 END FOR
 END IF
 END FOR
@@ -870,8 +933,6 @@ END FOR
 END FOR
 ui_write("---------------------------------Stress Tensor END")
 END IF
-
-
 END FUNCTION
 
 
@@ -898,6 +959,9 @@ INTEGER num_elems,results_ids(5),data_type,resloc,nres,ids(VIRTUAL),nresults(VIR
 STRING elem_list[50000],avg_method[20],avg_domain[20],extrap_method[20],complex_form[10],layer_labels[80](VIRTUAL),@
 subcase_name[31],location[3]
 REAL complex_angle,results(VIRTUAL)
+$ 存放结果数组
+INTEGER index,number
+STRING min_res[128],max_res[128],strain_min[128](VIRTUAL),strain_max[128](VIRTUAL)
 
 
 $ 初始化部分结果变量
@@ -973,6 +1037,13 @@ results_ids(3)=primary_id
 results_ids(4)=secondary_id
 status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
 IF(status==0)THEN
+$ 初始化结果数组
+number=groups_selected_number*loadcase_number*subcase_number*layer_number
+index=1
+min_res=""
+max_res=""
+sys_allocate_array(strain_min,1,number)
+sys_allocate_array(strain_max,1,number)
 $ 遍历每层的每个应变值
 FOR(m=1 TO layer_number)
 FOR(s=1 TO strain_number)
@@ -987,10 +1058,23 @@ ELSE
 
 j = minloc(1)
 ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), strain_labels(s), results(j) )
+min_res=min_res//str_from_real(results(j))//"*"
 j = maxloc(1)
 ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), strain_labels(s),results(j) )
+max_res=max_res//str_from_real(results(j))//"*"
 END IF
 END FOR
+strain_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
+str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)//str_token(min_res,"*",5,FALSE)//"*"//str_token(min_res,"*",6,FALSE)//"*"//str_token(min_res,"*",7,FALSE)
+strain_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
+str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
+index+=1
+END FOR
+$ 测试输出结果数组
+INTEGER p
+FOR(p=1 TO number)
+ui_write(strain_min(p))
+ui_write(strain_max(p))
 END FOR
 END IF
 END FOR
