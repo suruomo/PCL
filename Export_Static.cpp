@@ -246,6 +246,7 @@ CLASS Export_Static
 
 CLASSWIDE WIDGET form_id,file_button,list_id,loadBCs_toggle_id,material_toggle_id,displacement_toggle_id,@
 stress_toggle_id,strain_toggle_id,apply_button,cancel_button
+CLASSWIDE INTEGER file_channel
 
 
 FUNCTION init()
@@ -335,9 +336,28 @@ END FUNCTION
 
 $ 应用选择
 FUNCTION apply()
+GLOBAL WIDGET file_id
 LOGICAL load_flag,mat_flag,displacement_flag,stress_flag,strain_flag
+INTEGER status
+STRING dir[200],date[128],time[32],path[300],database_name[256]
 
 
+$ 获取当前目录
+get_current_dir(dir)
+$ 初始化存放文件目录
+time=sys_time()
+date=sys_date()//"-"//str_token(time,":",1,FALSE)//"-"//str_token(time,":",2,FALSE)//"-"//str_token(time,":",3,FALSE)
+path=dir//"\export-static-result-"//date//".txt"
+$ 选择结果文件
+ui_wid_get(file_id,"VALUE",database_name)
+IF(database_name=="")THEN
+ui_write("Please select a database file!!!!")
+ELSE
+$ 打开文件
+status=text_open(path,"NWA",0,0,file_channel)
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
 $ 1.提取各工况载荷约束信息
 ui_wid_get(loadBCs_toggle_id,"VALUE",load_flag)
 IF(load_flag==TRUE)THEN
@@ -363,10 +383,15 @@ ui_wid_get(strain_toggle_id,"VALUE",strain_flag)
 IF(strain_flag==TRUE)THEN
 Export_Static.export_strain()
 END IF
-
-
-
-
+$ 6.关闭并保存文件
+status=text_close (file_channel,"" )
+IF(status!=0) THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+msg_to_form( status, 1, 0, 0, 0., "Export Result Successful" )
+END IF
+END IF
+END IF
 END FUNCTION
 
 
@@ -423,11 +448,14 @@ END FOR
 END IF
 END IF
 END IF
-$ 测试输出结果数组
+$ 测试输出结果数组到文件
+text_write_string(file_channel,"-----Load/BCs Start-----")
+text_write_string(file_channel,"-----loadcase name*loadcase type*load id*load name*load type*application type*element dimension-----")
 INTEGER p=1
 FOR(p=1 TO index-1)
-ui_write(lbc_res(p))
+text_write_string(file_channel,lbc_res(p))
 END FOR
+text_write_string(file_channel,"-----Load/BCs End-----")
 END FUNCTION
 
 
@@ -449,7 +477,7 @@ STRING res[256],material_res[256](15)
 IF(db_get_all_material_names()==0)THEN
 IF(db_get_next_material_name(material_name,material_id,cat,lin,dir,type)==0)THEN
 IF(cat==1)THEN
-res=""
+res=material_name//"*"
 db_get_matl_prop_value_count(material_id,num_words)
 sys_allocate_array(word_ids,1,num_words)
 sys_allocate_array(field_ids,1,num_words)
@@ -460,7 +488,6 @@ p=mth_array_search(word_ids,2,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 EM=word_values(p)
-ui_write(str_from_real(EM))
 res=res//"Elastic Modulus:"//str_from_real(EM)//","
 END IF
 END IF
@@ -468,7 +495,6 @@ p=mth_array_search(word_ids,5,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 PR=word_values(p)
-ui_write(str_from_real(PR))
 res=res//"Possion Ratio:"//str_from_real(PR)//","
 END IF
 END IF
@@ -476,7 +502,6 @@ p=mth_array_search(word_ids,8,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM=word_values(p)
-ui_write(str_from_real(SM))
 res=res//"Shear Modulus:"//str_from_real(SM)//","
 END IF
 END IF
@@ -484,7 +509,6 @@ p=mth_array_search(word_ids,16,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 D=word_values(p)
-ui_write(str_from_real(D))
 res=res//"Density:"//str_from_real(D)//","
 END IF
 END IF
@@ -492,7 +516,6 @@ p=mth_array_search(word_ids,24,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 TEC=word_values(p)
-ui_write(str_from_real(TEC))
 res=res//"Thermal Expan Coeff:"//str_from_real(TEC)//","
 END IF
 END IF
@@ -500,7 +523,6 @@ p=mth_array_search(word_ids,30,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SDC=word_values(p)
-ui_write(str_from_real(SDC))
 res=res//"Structural Damping Coeff:"//str_from_real(SDC)//","
 END IF
 END IF
@@ -508,7 +530,6 @@ p=mth_array_search(word_ids,1,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 RT=word_values(p)
-ui_write(str_from_real(RT))
 res=res//"Reference Temperature:"//str_from_real(RT)//","
 END IF
 END IF
@@ -528,7 +549,6 @@ p=mth_array_search(word_ids,2,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 EM11=word_values(p)
-ui_write(str_from_real(EM11))
 res=res//"Elastic Modulus 11:"//str_from_real(EM11)//","
 END IF
 END IF
@@ -536,7 +556,6 @@ p=mth_array_search(word_ids,5,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 EM22=word_values(p)
-ui_write(str_from_real(EM22))
 res=res//"Elastic Modulus 22:"//str_from_real(EM22)//","
 END IF
 END IF
@@ -544,7 +563,6 @@ p=mth_array_search(word_ids,8,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 PR12=word_values(p)
-ui_write(str_from_real(PR12))
 res=res//"Possion Ratio 12:"//str_from_real(PR12)//","
 END IF
 END IF
@@ -552,7 +570,6 @@ p=mth_array_search(word_ids,16,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM12=word_values(p)
-ui_write(str_from_real(SM12))
 res=res//"Shear Modulus 12:"//str_from_real(SM12)//","
 END IF
 END IF
@@ -560,7 +577,6 @@ p=mth_array_search(word_ids,24,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM23=word_values(p)
-ui_write(str_from_real(SM23))
 res=res//"Shear Modulus 23:"//str_from_real(SM23)//","
 END IF
 END IF
@@ -568,7 +584,6 @@ p=mth_array_search(word_ids,30,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SM13=word_values(p)
-ui_write(str_from_real(SM13))
 res=res//"Shear Modulus 13:"//str_from_real(SM13)//","
 END IF
 END IF
@@ -576,7 +591,6 @@ p=mth_array_search(word_ids,1,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 D1=word_values(p)
-ui_write(str_from_real(D1))
 res=res//"Density:"//str_from_real(D1)//","
 END IF
 END IF
@@ -584,7 +598,6 @@ p=mth_array_search(word_ids,1,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 TEC11=word_values(p)
-ui_write(str_from_real(TEC11))
 res=res//"Thermal Expan Coeff 11:"//str_from_real(TEC11)//","
 END IF
 END IF
@@ -592,7 +605,6 @@ p=mth_array_search(word_ids,1,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 TEC22=word_values(p)
-ui_write(str_from_real(TEC22))
 res=res//"Thermal Expan Coeff 22:"//str_from_real(TEC22)//","
 END IF
 END IF
@@ -600,7 +612,6 @@ p=mth_array_search(word_ids,1,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 SDC1=word_values(p)
-ui_write(str_from_real(SDC1))
 res=res//"Structural Damping Coeff:"//str_from_real(SDC1)//","
 END IF
 END IF
@@ -608,7 +619,6 @@ p=mth_array_search(word_ids,1,FALSE)
 IF(p!=0)THEN
 IF(field_ids(p)==0)THEN
 RT1=word_values(p)
-ui_write(str_from_real(RT1))
 res=res//"Reference Temperature:"//str_from_real(RT1)//","
 END IF
 END IF
@@ -617,11 +627,14 @@ index+=1
 END IF
 END IF
 END IF
-$ 测试输出结果数组
+$ 测试输出结果数组到文件
+text_write_string(file_channel,"-----Material Start-----")
+text_write_string(file_channel,"-----material name*info-----")
 INTEGER o=1
 FOR(o=1 TO index-1)
-ui_write(material_res(o))
+text_write_string(file_channel,material_res(o))
 END FOR
+text_write_string(file_channel,"-----Material End-----")
 END FUNCTION
 
 
@@ -681,17 +694,17 @@ END IF
 END IF
 sys_allocate_array(loadcase_ids,1,loadcase_number)
 sys_allocate_array(loadcase_names,1,loadcase_number)
-ui_write("---------------------------------load case start")
+$ ui_write("---------------------------------load case start")
 IF(db_get_all_load_case_names()==0)THEN
 IF(db_get_next_load_case_name(loadcase_name)==0)THEN
 loadcase_names(i)=loadcase_name
 db_get_load_case_id(loadcase_name,loadcase_id)
 loadcase_ids(i)=loadcase_id
-ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
+$ ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
 i+=1
 END IF
 END IF
-ui_write("---------------------------------load case end")
+$ ui_write("---------------------------------load case end")
 $ 3.遍历每组，每个工况下的子工况位移结果
 FOR(g=1 TO groups_selected_number)
 group_id=group_ids(g)
@@ -759,12 +772,20 @@ translational_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//
 str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)
 index+=1
 END FOR
-$ 测试输出结果数组
+$ 测试输出结果数组到文件
+text_write_string(file_channel,"-----Displacements Translational Min Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
 INTEGER p
 FOR(p=1 TO number)
-ui_write(translational_min(p))
-ui_write(translational_max(p))
+text_write_string(file_channel,translational_min(p))
 END FOR
+text_write_string(file_channel,"-----Displacements Translational Min End-----")
+text_write_string(file_channel,"-----Displacements Translational Max Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
+FOR(p=1 TO number)
+text_write_string(file_channel,translational_max(p))
+END FOR
+text_write_string(file_channel,"-----Displacements Translational Max End-----")
 END IF
 END FOR
 ui_write("---------------------------------Displacements Translational END")
@@ -815,11 +836,19 @@ rotational_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"
 str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)
 index+=1
 END FOR
-$ 测试输出结果数组
+$ 测试输出结果数组到文件
+text_write_string(file_channel,"-----Displacements Rotational Min Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
 FOR(p=1 TO number)
-ui_write(rotational_min(p))
-ui_write(rotational_max(p))
+text_write_string(file_channel,rotational_min(p))
 END FOR
+text_write_string(file_channel,"-----Displacements Rotational Min End-----")
+text_write_string(file_channel,"-----Displacements Rotational Max Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
+FOR(p=1 TO number)
+text_write_string(file_channel,rotational_max(p))
+END FOR
+text_write_string(file_channel,"-----Displacements Rotational Max End-----")
 END IF
 END FOR
 ui_write("---------------------------------Displacements Rotational END")
@@ -890,17 +919,17 @@ END IF
 END IF
 sys_allocate_array(loadcase_ids,1,loadcase_number)
 sys_allocate_array(loadcase_names,1,loadcase_number)
-ui_write("---------------------------------load case start")
+$ ui_write("---------------------------------load case start")
 IF(db_get_all_load_case_names()==0)THEN
 IF(db_get_next_load_case_name(loadcase_name)==0)THEN
 loadcase_names(i)=loadcase_name
 db_get_load_case_id(loadcase_name,loadcase_id)
 loadcase_ids(i)=loadcase_id
-ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
+$ ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
 i+=1
 END IF
 END IF
-ui_write("---------------------------------load case end")
+$ ui_write("---------------------------------load case end")
 $ 3.遍历每组，每个工况下的子工况应力结果
 ui_write("---------------------------------Stress Tensor Start")
 FOR(g=1 TO groups_selected_number)
@@ -915,7 +944,7 @@ ui_write(str_from_integer(status))
 IF(status!=0) THEN
 msg_to_form( status, 4, 0, 0, 0., "" )
 ELSE
-ui_write("subcase num:"//str_from_integer(subcase_number))
+$ ui_write("subcase num:"//str_from_integer(subcase_number))
 $ 获取结果
 status=res_utl_get_result_ids(loadcase_number,loadcase_ids,subcase_ids,results_number,primary_ids,secondary_ids)
 IF(status==0)THEN
@@ -963,12 +992,20 @@ stress_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//la
 str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
 index+=1
 END FOR
-$ 测试输出结果数组
+$ 测试输出结果数组到文件
+text_write_string(file_channel,"-----Stress Tensor Min Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*XY*YZ*ZX*VON MISES-----")
 INTEGER p
 FOR(p=1 TO number)
-ui_write(stress_min(p))
-ui_write(stress_max(p))
+text_write_string(file_channel,stress_min(p))
 END FOR
+text_write_string(file_channel,"-----Stress Tensor Min End-----")
+text_write_string(file_channel,"-----Stress Tensor Max Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*XY*YZ*ZX*VON MISES-----")
+FOR(p=1 TO number)
+text_write_string(file_channel,stress_max(p))
+END FOR
+text_write_string(file_channel,"-----Stress Tensor Max End-----")
 END IF
 END FOR
 END IF
@@ -1041,17 +1078,17 @@ END IF
 END IF
 sys_allocate_array(loadcase_ids,1,loadcase_number)
 sys_allocate_array(loadcase_names,1,loadcase_number)
-ui_write("---------------------------------load case start")
+$ ui_write("---------------------------------load case start")
 IF(db_get_all_load_case_names()==0)THEN
 IF(db_get_next_load_case_name(loadcase_name)==0)THEN
 loadcase_names(i)=loadcase_name
 db_get_load_case_id(loadcase_name,loadcase_id)
 loadcase_ids(i)=loadcase_id
-ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
+$ ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
 i+=1
 END IF
 END IF
-ui_write("---------------------------------load case end")
+$ ui_write("---------------------------------load case end")
 $ 3.遍历每组，每个工况下的子工况应变结果
 ui_write("---------------------------------Strain Tensor Start")
 FOR(g=1 TO groups_selected_number)
@@ -1114,12 +1151,20 @@ strain_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//la
 str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
 index+=1
 END FOR
-$ 测试输出结果数组
+$ 测试输出结果数组到文件
+text_write_string(file_channel,"-----Strain Tensor Min Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*XY*YZ*ZX*VON MISES-----")
 INTEGER p
 FOR(p=1 TO number)
-ui_write(strain_min(p))
-ui_write(strain_max(p))
+text_write_string(file_channel,strain_min(p))
 END FOR
+text_write_string(file_channel,"-----Strain Tensor Min End-----")
+text_write_string(file_channel,"-----Strain Tensor Max Start-----")
+text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*XY*YZ*ZX*VON MISES-----")
+FOR(p=1 TO number)
+text_write_string(file_channel,strain_max(p))
+END FOR
+text_write_string(file_channel,"-----Strain Tensor Max End-----")
 END IF
 END FOR
 END IF
