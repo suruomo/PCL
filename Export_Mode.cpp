@@ -297,7 +297,7 @@ $ 输出结果类型选择
 ui_label_create(form_id,"",x_loc,y_loc,"Select Output Type:")
 y_loc+=uil_form_sizes.spacing( 8 )*2
 frequency_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Mode Frequency")
-shape_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*uil_form_sizes.spacing( 7 ),y_loc,"Mode Shape")
+$ shape_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*uil_form_sizes.spacing( 7 ),y_loc,"Mode Shape")
 y_loc+= uil_form_sizes.dbox_hgt( 1 )+ uil_form_sizes.spacing( 8 )
 $ 创建按钮
 apply_button=ui_button_create(form_id, "apply", uil_form_sizes.button_x_loc1( 2 ), y_loc, uil_form_sizes.button_wid( 2 ), 0.,"Apply", FALSE, FALSE)
@@ -389,7 +389,10 @@ ui_write("Please select a database file!!!!")
 ELSE
 $ 打开文件
 status0=text_open(path_out,"NWA",0,0,out_channel)
-status1=text_open(path_in,"R",0,0,in_channel)
+status1=text_open(path_in,"OR",0,0,in_channel)
+IF(status1!=0) THEN
+msg_to_form( status1, 4, 0, 0, 0., "" )
+ELSE
 IF(status0!=0) THEN
 msg_to_form( status0, 4, 0, 0, 0., "" )
 ELSE
@@ -408,11 +411,11 @@ ui_wid_get(frequency_toggle_id,"VALUE",frequency_flag)
 IF(frequency_flag==TRUE)THEN
 Export_Mode.export_frequency()
 END IF
-$ 4.提取选中组的各工况的模态振型
-ui_wid_get(shape_toggle_id,"VALUE",shape_flag)
-IF(shape_flag==TRUE)THEN
-Export_Mode.export_shape()
-END IF
+$ $ 4.提取选中组的各工况的模态振型
+$ ui_wid_get(shape_toggle_id,"VALUE",shape_flag)
+$ IF(shape_flag==TRUE)THEN
+$ Export_Mode.export_shape()
+$ END IF
 $ 6.关闭并保存文件
 status0=text_close (out_channel,"")
 IF(status0!=0) THEN
@@ -420,11 +423,13 @@ msg_to_form( status0, 4, 0, 0, 0., "" )
 ELSE
 msg_to_form( status0, 1, 0, 0, 0., "Export Result Successful" )
 END IF
-
-
 status1=text_close (in_channel,"")
-
-
+IF(status1!=0) THEN
+msg_to_form( status1, 4, 0, 0, 0., "" )
+ELSE
+msg_to_form( status1, 1, 0, 0, 0., "" )
+END IF
+END IF
 END IF
 END IF
 END FUNCTION
@@ -674,18 +679,41 @@ END FUNCTION
 
 
 FUNCTION export_frequency()
-INTEGER modes_selected_number,status
+INTEGER str_length,index,status
+STRING str[500]
 
 
-ui_wid_get(list_id,"NSELECTED",modes_selected_number)
+text_write_string(out_channel,"-----Mode Frequency Start-----")
 
 
-IF(modes_selected_number==0)THEN
-xf_error_start("Please select one mode at least!")
-xf_error_end()
+$ 在.f06文件中找到模态频率结果写入结果文件中
+WHILE(TRUE)
+status=text_read_string(in_channel,str,str_length)
+IF(status<0) THEN
+BREAK
+ELSE IF(status>0)THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
 ELSE
-text_write_string(out_channel,"llallal")
+index=str_index(str,"R E A L   E I G E N V A L U E S")
+IF(index!=0)THEN
+text_write_string(out_channel,str)
+WHILE(text_read_string(in_channel,str,str_length)==0)
+index=str_index(str,"MSC Nastran")
+IF(index==0)THEN
+text_write_string(out_channel,str)
+ELSE
+BREAK
 END IF
+END WHILE
+BREAK
+END IF
+END IF
+END WHILE
+
+
+text_write_string(out_channel,"-----Mode Frequency END-----")
+
+
 END FUNCTION
 
 
