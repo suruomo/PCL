@@ -245,7 +245,7 @@ CLASS Export_Mode
 
 
 CLASSWIDE WIDGET form_id,file_button,list_id,loadBCs_toggle_id,material_toggle_id,frequency_toggle_id,@
-shape_toggle_id,apply_button,cancel_button
+factors_toggle_id,apply_button,cancel_button
 CLASSWIDE INTEGER in_channel,out_channel
 
 
@@ -266,21 +266,21 @@ result_cases_numbers=0
 
 
 $ 创建表单
-form_id=ui_form_create("",uil_form_sizes.form_x_loc( 1 ),uil_form_sizes.form_y_loc( 1 ), "UL",uil_form_sizes.form_wid( 1 ),uil_form_sizes.form_hgt( 3 ), "Mode Analysis Result Export", "" )
+form_id=ui_form_create("",uil_form_sizes.form_x_loc( 1 ),uil_form_sizes.form_y_loc( 1 ), "UL",uil_form_sizes.form_wid( 1 ),uil_form_sizes.form_hgt( 3 ), "Modal Analysis Result Export", "" )
 $ 创建结果选择文件
 file_id=ui_databox_create(form_id,"",x_loc,y_loc,0.0,uil_form_sizes.dbox_wid( 1 ),"Select *.f06:","",TRUE,"STRING",1)
 y_loc+= uil_form_sizes.dbox_hgt( 1 )+ uil_form_sizes.spacing( 8 )
 file_button=ui_button_create(form_id, "select_file", uil_form_sizes.button_x_loc1( 2 ), y_loc, uil_form_sizes.button_wid( 2 ), 0.,"Select File", FALSE, FALSE)
 y_loc+= uil_form_sizes.dbox_hgt( 1 )
 $ 输出模型信息选择项
-ui_label_create(form_id,"",x_loc,y_loc,"Model Information:")
+ui_label_create(form_id,"",x_loc,y_loc,"Modal Information:")
 y_loc+=uil_form_sizes.spacing( 8 )*2
 ui_separator_create(form_id,"s1",x_loc,y_loc,uil_form_sizes.form_wid( 1 ),TRUE)
 loadBCs_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Export Load/BCs")
 material_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4.5*uil_form_sizes.spacing( 7 ),y_loc,"Export Material")
 y_loc+= uil_form_sizes.dbox_hgt( 1 )+ uil_form_sizes.spacing( 8 )
 $ 创建result cases list列表
-list_id=ui_listbox_create(form_id,"",x_loc,y_loc,uil_form_sizes.dbox_wid( 1 ),result_cases_numbers,"Select Result Cases:","MULTIPLE",FALSE)
+list_id=ui_listbox_create(form_id,"",x_loc,y_loc,uil_form_sizes.dbox_wid( 1 ),result_cases_numbers,"Result Cases:","MULTIPLE",FALSE)
 $ 准备组列表数据
 Export_Mode.get_result_cases(result_cases_names,result_cases_labels,result_cases_numbers)
 
@@ -296,8 +296,8 @@ y_loc+= uil_form_sizes.dbox_hgt( 1 )*5+ uil_form_sizes.spacing( 8 )
 $ 输出结果类型选择
 ui_label_create(form_id,"",x_loc,y_loc,"Select Output Type:")
 y_loc+=uil_form_sizes.spacing( 8 )*2
-frequency_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Mode Frequency")
-$ shape_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*uil_form_sizes.spacing( 7 ),y_loc,"Mode Shape")
+frequency_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Modal Frequency")
+factors_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*uil_form_sizes.spacing( 7 ),y_loc,"Modal Participation Factors")
 y_loc+= uil_form_sizes.dbox_hgt( 1 )+ uil_form_sizes.spacing( 8 )
 $ 创建按钮
 apply_button=ui_button_create(form_id, "apply", uil_form_sizes.button_x_loc1( 2 ), y_loc, uil_form_sizes.button_wid( 2 ), 0.,"Apply", FALSE, FALSE)
@@ -371,7 +371,7 @@ END FUNCTION
 $ 应用选择
 FUNCTION apply()
 GLOBAL WIDGET file_id
-LOGICAL load_flag,mat_flag,frequency_flag,shape_flag
+LOGICAL load_flag,mat_flag,frequency_flag,factors_flag
 INTEGER status0,status1
 STRING dir[200],date[128],time[32],path_out[300],path_in[300]
 
@@ -406,16 +406,16 @@ ui_wid_get(material_toggle_id,"VALUE",mat_flag)
 IF(mat_flag==TRUE)THEN
 Export_Mode.export_material()
 END IF
-$ 3.提取选中组的各工况的模态频率
+$ 3.提取模态频率
 ui_wid_get(frequency_toggle_id,"VALUE",frequency_flag)
 IF(frequency_flag==TRUE)THEN
 Export_Mode.export_frequency()
 END IF
-$ $ 4.提取选中组的各工况的模态振型
-$ ui_wid_get(shape_toggle_id,"VALUE",shape_flag)
-$ IF(shape_flag==TRUE)THEN
-$ Export_Mode.export_shape()
-$ END IF
+$ 4.提取模态参与系数
+ui_wid_get(factors_toggle_id,"VALUE",factors_flag)
+IF(factors_flag==TRUE)THEN
+Export_Mode.export_factors()
+END IF
 $ 6.关闭并保存文件
 status0=text_close (out_channel,"")
 IF(status0!=0) THEN
@@ -683,7 +683,7 @@ INTEGER str_length,index,status
 STRING str[500]
 
 
-text_write_string(out_channel,"-----Mode Frequency Start-----")
+text_write_string(out_channel,"-----Modal Frequency Start-----")
 
 
 $ 在.f06文件中找到模态频率结果写入结果文件中
@@ -711,12 +711,52 @@ END IF
 END WHILE
 
 
-text_write_string(out_channel,"-----Mode Frequency END-----")
+text_write_string(out_channel,"-----Modal Frequency END-----")
 
 
 END FUNCTION
 
 
+
+
+FUNCTION export_factors()
+INTEGER str_length,index,status
+STRING str[500]
+
+
+text_write_string(out_channel,"-----Modal Participation Factors Start-----")
+
+
+$ 在.f06文件中找到模态参与系数结果写入结果文件中
+WHILE(TRUE)
+status=text_read_string(in_channel,str,str_length)
+IF(status<0) THEN
+BREAK
+ELSE IF(status>0)THEN
+msg_to_form( status, 4, 0, 0, 0., "" )
+ELSE
+index=str_index(str,"MODAL PARTICIPATION FACTORS")
+IF(index!=0)THEN
+text_write_string(out_channel,str)
+WHILE(text_read_string(in_channel,str,str_length)==0)
+index=str_index(str,"TOTAL")
+IF(index==0)THEN
+text_write_string(out_channel,str)
+ELSE
+text_write_string(out_channel,str)
+BREAK
+END IF
+END WHILE
+BREAK
+END IF
+END IF
+END WHILE
+
+
+text_write_string(out_channel,"-----Modal Participation Factors END-----")
+
+
+END FUNCTION
 FUNCTION get_load_type_string(load_type_integer)
 INTEGER load_type_integer
 STRING load_type_string[32]
