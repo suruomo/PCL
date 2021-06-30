@@ -2,7 +2,7 @@
 
 CLASS Export_Static
 
-    CLASSWIDE WIDGET form_id,file_button,list_id,loadBCs_toggle_id,material_toggle_id,displacement_toggle_id,@
+    CLASSWIDE WIDGET form_id,file_button,list_id,loadBCs_toggle_id,material_toggle_id,constraintforces_toggle_id,displacement_toggle_id,@
                      stress_toggle_id,strain_toggle_id,apply_button,cancel_button
     CLASSWIDE INTEGER file_channel
 
@@ -60,9 +60,11 @@ CLASS Export_Static
         $ 输出结果类型选择
         ui_label_create(form_id,"",x_loc,y_loc,"Select Output Type:")
         y_loc+=INTER_WIDGET_SPACE*2
-        displacement_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Displacement")
-        stress_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*DOUBLE_SPACE,y_loc,"Stress")
-        strain_toggle_id=ui_toggle_create(form_id,"",x_loc+ 6.5*DOUBLE_SPACE,y_loc,"Strain")
+        constraintforces_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Constraint Forces")
+        displacement_toggle_id=ui_toggle_create(form_id,"",5.5*DOUBLE_SPACE,y_loc,"Displacement")
+        y_loc+= 2*INTER_WIDGET_SPACE
+        stress_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Stress")
+        strain_toggle_id=ui_toggle_create(form_id,"",x_loc+ 5*DOUBLE_SPACE,y_loc,"Strain")
         y_loc+= DBOX_HGT_LABOVE+ INTER_WIDGET_SPACE
         $ 创建按钮
         apply_button=ui_button_create(form_id, "apply", BUTTON_HALF_X_LOC1, y_loc, BUTTON_WID_HALF, 0.,"Apply", FALSE, FALSE)
@@ -82,7 +84,7 @@ CLASS Export_Static
     $ 应用选择
     FUNCTION apply()
         GLOBAL WIDGET file_id
-        LOGICAL load_flag,mat_flag,displacement_flag,stress_flag,strain_flag
+        LOGICAL load_flag,mat_flag,displacement_flag,constrainforces_flag,stress_flag,strain_flag
         INTEGER status
         STRING dir[200],date[128],time[32],path[300],database_name[256]
        
@@ -117,17 +119,22 @@ CLASS Export_Static
                 IF(displacement_flag==TRUE)THEN
                     Export_Static.export_displacement()
                 END IF
-                $ 4.提取选中组的各工况的应力信息
+                $ 4.提取选中组的各工况的约束力信息
+                ui_wid_get(constraintforces_toggle_id,"VALUE",constrainforces_flag)
+                IF(constrainforces_flag==TRUE)THEN
+                    Export_Static.export_constrainforces()
+                END IF
+                $ 5.提取选中组的各工况的应力信息
                 ui_wid_get(stress_toggle_id,"VALUE",stress_flag)
                 IF(stress_flag==TRUE)THEN
                     Export_Static.export_stress()
                 END IF
-                $ 5.提取选中组的各工况的应变信息
+                $ 6.提取选中组的各工况的应变信息
                 ui_wid_get(strain_toggle_id,"VALUE",strain_flag)
                 IF(strain_flag==TRUE)THEN
                     Export_Static.export_strain()
                 END IF
-                $ 6.关闭并保存文件
+                $ 7.关闭并保存文件
                 status=text_close (file_channel,"" )
                 IF(status!=0) THEN 
                     msg_to_form( status, 4, 0, 0, 0., "" )
@@ -585,7 +592,223 @@ CLASS Export_Static
         END IF
     END FUNCTION
 
-    /*4.提取选中组的各工况应力信息*/
+    /*4.提取选中组的各工况的约束力信息*/
+    FUNCTION export_constrainforces()
+        $ 定义组和工况变量
+        INTEGER groups_selected_number,group_ids(VIRTUAL),group_id,loadcase_number,loadcase_id,loadcase_ids(VIRTUAL),i,status,j,k,g,l,m,s
+        STRING group_name[32],group_names[32](VIRTUAL),loadcase_name[32],loadcase_names[32](VIRTUAL)
+        $ 定义子工况变量
+        INTEGER subcase_number,subcase_ids(VIRTUAL)
+        $ 定义约束力变量
+        INTEGER constrainforces_number=4
+        STRING constrainforces_labels[5](4)
+        constrainforces_labels(1)="XX"
+        constrainforces_labels(2)="YY"
+        constrainforces_labels(3)="ZZ"
+        constrainforces_labels(4)="MAG"
+        $ 定义提取结果相关变量
+        INTEGER num_elems,results_ids(5),data_type,resloc,nres,ids(VIRTUAL),nresults(VIRTUAL),minloc(12),maxloc(12),primary_id,secondary_id,primary_ids(VIRTUAL),secondary_ids(VIRTUAL),results_number,layer_number,layer_ids(VIRTUAL)
+        STRING elem_list[50000],avg_method[20],avg_domain[20],extrap_method[20],complex_form[10],layer_labels[80](VIRTUAL),@
+                subcase_name[31],location[3]
+        REAL complex_angle,results(VIRTUAL)
+        $ 存放结果数组
+        INTEGER index,number
+        STRING min_res[128],max_res[128],translational_min[128](VIRTUAL),translational_max[128](VIRTUAL),rotational_min[128](VIRTUAL),rotational_max[128](VIRTUAL)
+        $ 初始化部分结果变量
+        avg_method="DeriveAverage"
+        avg_domain="All"
+        extrap_method="ShapeFunc"
+        complex_form=""
+        complex_angle=0.0
+        location="N"
+
+        ui_wid_get(list_id,"NSELECTED",groups_selected_number)
+        IF(groups_selected_number==0)THEN
+             xf_error_start("Please select one group at least!") 
+             xf_error_end()
+        ELSE
+            $ 1.获取组
+            sys_allocate_array(group_ids,1,groups_selected_number)
+            sys_allocate_array(group_names,1,groups_selected_number)
+            FOR(i=1 TO groups_selected_number)
+                db_get_group_name(i,group_name)
+                group_names(i)=group_name
+                db_get_group_id(group_name,group_id)
+                group_ids(i)=group_id
+            END FOR
+            loadsbcs_eval_all() /*重新计算所有载荷约束信息*/
+            $ 2.获取工况
+            i=1
+            IF(db_get_all_load_case_names()==0)THEN
+                IF(db_get_next_load_case_name(loadcase_name)==0)THEN
+                    loadcase_number+=1
+                END IF
+            END IF
+            sys_allocate_array(loadcase_ids,1,loadcase_number)
+            sys_allocate_array(loadcase_names,1,loadcase_number)
+            $ ui_write("---------------------------------load case start")
+            IF(db_get_all_load_case_names()==0)THEN
+                IF(db_get_next_load_case_name(loadcase_name)==0)THEN
+                    loadcase_names(i)=loadcase_name
+                    db_get_load_case_id(loadcase_name,loadcase_id)
+                    loadcase_ids(i)=loadcase_id
+                    $ ui_write("loadcase name:"//loadcase_name//"   loadcase id:"//str_from_integer(loadcase_id))
+                    i+=1
+                END IF
+            END IF
+            $ ui_write("---------------------------------load case end")
+            $ 3.遍历每组，每个工况下的子工况位移结果
+            FOR(g=1 TO groups_selected_number)
+                group_id=group_ids(g)
+                group_name=group_names(g)
+                Export_Static.get_elem_list(group_id,group_name,elem_list,num_elems) /* 获取当前组的所有单元列表*/
+                $ 遍历
+                FOR(l=1 TO loadcase_number) 
+                    loadcase_id=loadcase_ids(l)
+                    status=res_utl_get_subcases(loadcase_id,subcase_number,subcase_ids)
+                    IF(status!=0) THEN 
+                        msg_to_form( status, 4, 0, 0, 0., "" )
+                    ELSE
+                        ui_write("subcase num:"//str_from_integer(subcase_number))
+                        $ 获取结果
+                        status=res_utl_get_result_ids(loadcase_number,loadcase_ids,subcase_ids,results_number,primary_ids,secondary_ids) 
+                        IF(status!=0) THEN 
+                            msg_to_form( status, 4, 0, 0, 0., "" )
+                        ELSE
+                           
+                            $ 遍历子工况-----Constraint Forces Translational
+                            ui_write("---------------------------------Constraint Forces Translational Start")
+                            FOR(k=1 TO subcase_number)
+                                db_get_sub_case_title(loadcase_id,subcase_ids(k),subcase_name)
+                                db_get_primary_res_id("Constraint Forces",primary_id)
+                                db_get_secondary_res_id(primary_id,"Translational",secondary_id)
+                                results_ids(1)=loadcase_id
+                                results_ids(2)=subcase_ids(k)
+                                results_ids(3)=primary_id
+                                results_ids(4)=secondary_id
+                                status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
+                                IF(status!=0) THEN 
+                                    msg_to_form( status, 4, 0, 0, 0., "" )
+                                ELSE
+                                    $ 初始化结果数组
+                                    number=groups_selected_number*loadcase_number*subcase_number*layer_number
+                                    index=1
+                                    min_res=""
+                                    max_res=""
+                                    sys_allocate_array(translational_min,1,number)
+                                    sys_allocate_array(translational_max,1,number)
+                                    $ 遍历每个结果值
+                                    FOR(m=1 TO  layer_number)
+                                        FOR(s=1 TO constrainforces_number)
+                                            results_ids(5)=layer_ids(m)
+                                            status=res_utl_extract_elem_results2(results_ids,elem_list,constrainforces_labels(s),location,@
+                                                    "",avg_method,avg_domain,extrap_method,complex_form,complex_angle,data_type,@
+                                                    resloc,nres,ids,nresults,results,minloc,maxloc)
+                                            IF(status!=0) THEN 
+                                                msg_to_form( status, 4, 0, 0, 0., "" )
+                                            ELSE
+                                                /* print out min/max */
+                                                j = minloc(1)
+                                                ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), constrainforces_labels(s), results(j) )
+                                                min_res=min_res//str_from_real(results(j))//"*"
+                                                j = maxloc(1)
+                                                ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), constrainforces_labels(s),results(j) )
+                                                max_res=max_res//str_from_real(results(j))//"*"
+                                            END IF
+                                        END FOR
+                                        translational_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
+                                                                str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)
+                                        translational_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
+                                                                str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)
+                                        index+=1
+                                    END FOR
+                                    $ 测试输出结果数组到文件
+                                    text_write_string(file_channel,"-----Constraint Forces Translational Min Start-----")
+                                    text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
+                                    INTEGER p
+                                    FOR(p=1 TO number)
+                                        text_write_string(file_channel,translational_min(p))
+                                    END FOR
+                                    text_write_string(file_channel,"-----Constraint Forces Translational Min End-----")
+                                    text_write_string(file_channel,"-----Constraint Forces Translational Max Start-----")
+                                    text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
+                                    FOR(p=1 TO number)
+                                        text_write_string(file_channel,translational_max(p))
+                                    END FOR
+                                    text_write_string(file_channel,"-----Constraint Forces Translational Max End-----")
+                                END IF
+                            END FOR
+                            ui_write("---------------------------------Constraint Forces Translational END")
+                            $ 遍历子工况-----Constraint Forces Rotational
+                            ui_write("---------------------------------Constraint Forces Rotational Start")
+                            FOR(k=1 TO subcase_number)
+                                db_get_sub_case_title(loadcase_id,subcase_ids(k),subcase_name)
+                                db_get_primary_res_id("Constraint Forces",primary_id)
+                                db_get_secondary_res_id(primary_id,"Rotational",secondary_id)
+                                results_ids(1)=loadcase_id
+                                results_ids(2)=subcase_ids(k)
+                                results_ids(3)=primary_id
+                                results_ids(4)=secondary_id
+                                status=res_utl_get_result_layers(results_ids,layer_number,layer_ids,layer_labels)
+                                IF(status!=0) THEN 
+                                    msg_to_form( status, 4, 0, 0, 0., "" )
+                                ELSE
+                                    $ 初始化结果数组
+                                    number=groups_selected_number*loadcase_number*subcase_number*layer_number
+                                    index=1
+                                    min_res=""
+                                    max_res=""
+                                    sys_allocate_array(rotational_min,1,number)
+                                    sys_allocate_array(rotational_max,1,number)
+                                    $ 遍历每个结果值
+                                    FOR(m=1 TO  layer_number)
+                                        FOR(s=1 TO constrainforces_number)
+                                            results_ids(5)=layer_ids(m)
+                                            status=res_utl_extract_elem_results2(results_ids,elem_list,constrainforces_labels(s),location,@
+                                                    "",avg_method,avg_domain,extrap_method,complex_form,complex_angle,data_type,@
+                                                    resloc,nres,ids,nresults,results,minloc,maxloc)
+                                            IF(status!=0) THEN 
+                                                msg_to_form( status, 4, 0, 0, 0., "" )
+                                            ELSE
+                                                /* print out min/max */
+                                                j = minloc(1)
+                                                ui_writec(" Group:%s,LoadCase:%s,SubCase:%s,layer:%s,Min Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), constrainforces_labels(s), results(j) )
+                                                min_res=min_res//str_from_real(results(j))//"*"
+                                                j = maxloc(1)
+                                                ui_writec(" Group:%s,Loadcase:%s,subcase:%s,layer:%s,Max Id= %d,%s= %g", group_name,loadcase_names(l),subcase_name,layer_labels(m),ids(j), constrainforces_labels(s),results(j) )
+                                                max_res=max_res//str_from_real(results(j))//"*"
+                                            END IF
+                                        END FOR
+                                        rotational_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
+                                                                str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)
+                                        rotational_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
+                                                                str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)
+                                        index+=1
+                                    END FOR 
+                                    $ 测试输出结果数组到文件
+                                    text_write_string(file_channel,"-----Constraint Forces Rotational Min Start-----")
+                                    text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
+                                    FOR(p=1 TO number)
+                                        text_write_string(file_channel,rotational_min(p))
+                                    END FOR
+                                    text_write_string(file_channel,"-----Constraint Forces Rotational Min End-----")
+                                    text_write_string(file_channel,"-----Constraint Forces Rotational Max Start-----")
+                                    text_write_string(file_channel,"-----group name*loadcase name*subcase name*layer name*XX*YY*ZZ*MAG-----")
+                                    FOR(p=1 TO number)
+                                        text_write_string(file_channel,rotational_max(p))
+                                    END FOR
+                                    text_write_string(file_channel,"-----Constraint Forces Rotational Max End-----")       
+                                END IF
+                            END FOR
+                            ui_write("---------------------------------Constraint Forces Rotational END")
+                        END IF
+                    END IF
+                END FOR
+            END FOR
+        END IF
+    END FUNCTION
+
+    /*5.提取选中组的各工况应力信息*/
     FUNCTION export_stress()
         $ 定义组和工况变量
         INTEGER groups_selected_number,group_ids(VIRTUAL),group_id,loadcase_number,loadcase_id,loadcase_ids(VIRTUAL),i,status,j,k,g,l,m,s
@@ -738,7 +961,7 @@ CLASS Export_Static
         END IF
     END FUNCTION
 
-    /*5.提取选中组的各工况应变信息*/
+    /*6.提取选中组的各工况应变信息*/
     FUNCTION export_strain()
         $ 定义组和工况变量
         INTEGER groups_selected_number,group_ids(VIRTUAL),group_id,loadcase_number,loadcase_id,loadcase_ids(VIRTUAL),i,status,j,k,g,l,m,s
@@ -939,7 +1162,7 @@ CLASS Export_Static
 
     /*h获取当前组的element列表*/
     FUNCTION get_elem_list(group_id,group_name,elem_list,num_elems)
-        STRING group_name[32],elem_list[50000]
+        STRING group_name[],elem_list[]
         INTEGER i,sum=0,group_id,num_elems
         INTEGER elem_ids(VIRTUAL),elem_id(1),topo_code(VIRTUAL)
         
