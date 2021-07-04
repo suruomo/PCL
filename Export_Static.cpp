@@ -1216,9 +1216,9 @@ max_res=max_res//str_from_real(results(j))//"*"
 END IF
 END FOR
 stress_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
-str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)//str_token(min_res,"*",5,FALSE)//"*"//str_token(min_res,"*",6,FALSE)//"*"//str_token(min_res,"*",7,FALSE)
+str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)//"*"//str_token(min_res,"*",5,FALSE)//"*"//str_token(min_res,"*",6,FALSE)//"*"//str_token(min_res,"*",7,FALSE)
 stress_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
-str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
+str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//"*"//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
 index+=1
 END FOR
 $ 测试输出结果数组到文件
@@ -1375,9 +1375,9 @@ max_res=max_res//str_from_real(results(j))//"*"
 END IF
 END FOR
 strain_min(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(min_res,"*",1,FALSE)//"*"//@
-str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)//str_token(min_res,"*",5,FALSE)//"*"//str_token(min_res,"*",6,FALSE)//"*"//str_token(min_res,"*",7,FALSE)
+str_token(min_res,"*",2,FALSE)//"*"//str_token(min_res,"*",3,FALSE)//"*"//str_token(min_res,"*",4,FALSE)//"*"//str_token(min_res,"*",5,FALSE)//"*"//str_token(min_res,"*",6,FALSE)//"*"//str_token(min_res,"*",7,FALSE)
 strain_max(index)=group_name//"*"//loadcase_names(l)//"*"//subcase_name//"*"//layer_labels(m)//"*"//str_token(max_res,"*",1,FALSE)//"*"//@
-str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
+str_token(max_res,"*",2,FALSE)//"*"//str_token(max_res,"*",3,FALSE)//"*"//str_token(max_res,"*",4,FALSE)//"*"//str_token(max_res,"*",5,FALSE)//"*"//str_token(max_res,"*",6,FALSE)//"*"//str_token(max_res,"*",7,FALSE)
 index+=1
 END FOR
 $ 测试输出结果数组到文件
