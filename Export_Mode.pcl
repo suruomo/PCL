@@ -3,7 +3,7 @@
 CLASS Export_Mode
 
     CLASSWIDE WIDGET form_id,file_button,list_id,loadBCs_toggle_id,material_toggle_id,frequency_toggle_id,@
-                     factors_toggle_id,apply_button,cancel_button
+                     factors_toggle_id,spcforce_toggle_id,displacement_toggle_id,apply_button,cancel_button
     CLASSWIDE INTEGER in_channel,out_channel
 
     FUNCTION init() 
@@ -49,6 +49,9 @@ CLASS Export_Mode
         y_loc+=INTER_WIDGET_SPACE*2
         frequency_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"Modal Frequency")
         factors_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*DOUBLE_SPACE,y_loc,"Modal Participation Factors")
+        y_loc+= 2*INTER_WIDGET_SPACE
+        spcforce_toggle_id=ui_toggle_create(form_id,"",x_loc,y_loc,"SpcForce")
+        displacement_toggle_id=ui_toggle_create(form_id,"",x_loc+ 4*DOUBLE_SPACE,y_loc,"Displacemnet")
         y_loc+= DBOX_HGT_LABOVE+ INTER_WIDGET_SPACE
         $ 创建按钮
         apply_button=ui_button_create(form_id, "apply", BUTTON_HALF_X_LOC1, y_loc, BUTTON_WID_HALF, 0.,"Apply", FALSE, FALSE)
@@ -116,7 +119,7 @@ CLASS Export_Mode
     $ 应用选择
     FUNCTION apply()
         GLOBAL WIDGET file_id
-        LOGICAL load_flag,mat_flag,frequency_flag,factors_flag
+        LOGICAL load_flag,mat_flag,frequency_flag,factors_flag,spcforce_flag,displacement_flag
         INTEGER status0,status1
         STRING dir[200],date[128],time[32],path_out[300],path_in[300]
        
@@ -159,9 +162,22 @@ CLASS Export_Mode
                     $ 4.提取模态参与系数
                     ui_wid_get(factors_toggle_id,"VALUE",factors_flag)
                     IF(factors_flag==TRUE)THEN
+                        text_open(path_in,"OR",0,0,in_channel)
                         Export_Mode.export_factors()
                     END IF
-                    $ 6.关闭并保存文件
+                    $ 5.提取单点约束spcforce
+                    ui_wid_get(spcforce_toggle_id,"VALUE",spcforce_flag)
+                    IF(spcforce_flag==TRUE)THEN
+                        text_open(path_in,"OR",0,0,in_channel)
+                        Export_Mode.export_spcforce()
+                    END IF
+                    $ 6.提取位移
+                    ui_wid_get(displacement_toggle_id,"VALUE",displacement_flag)
+                    IF(displacement_flag==TRUE)THEN
+                        text_open(path_in,"OR",0,0,in_channel)
+                        Export_Mode.export_displacement()
+                    END IF
+                    $ 7.关闭并保存文件
                     status0=text_close (out_channel,"") /*关闭结果输出文件*/
                     IF(status0!=0) THEN 
                         msg_to_form( status0, 4, 0, 0, 0., "" )
@@ -414,8 +430,6 @@ CLASS Export_Mode
         INTEGER str_length,index,status
         STRING str[500]
 
-        text_write_string(out_channel,"-----Modal Frequency Start-----")
-
         $ 在.f06文件中找到模态频率结果写入结果文件中
         WHILE(TRUE)
             status=text_read_string(in_channel,str,str_length)
@@ -426,6 +440,7 @@ CLASS Export_Mode
             ELSE
                 index=str_index(str,"R E A L   E I G E N V A L U E S")
                 IF(index!=0)THEN
+                    text_write_string(out_channel,"-----Modal Frequency Start-----")
                     text_write_string(out_channel,str)
                     WHILE(text_read_string(in_channel,str,str_length)==0)
                         index=str_index(str,"MSC Nastran")
@@ -435,21 +450,17 @@ CLASS Export_Mode
                             BREAK
                         END IF
                     END WHILE
+                     text_write_string(out_channel,"-----Modal Frequency END-----")
                     BREAK
                 END IF
             END IF
         END WHILE
-
-        text_write_string(out_channel,"-----Modal Frequency END-----")
-
     END FUNCTION
 
     /*4.提取模态参与系数*/
     FUNCTION export_factors()
         INTEGER str_length,index,status
         STRING str[500]
-
-        text_write_string(out_channel,"-----Modal Participation Factors Start-----")
 
         $ 在.f06文件中找到模态参与系数结果写入结果文件中
         WHILE(TRUE)
@@ -461,24 +472,88 @@ CLASS Export_Mode
             ELSE
                 index=str_index(str,"MODAL PARTICIPATION FACTORS")
                 IF(index!=0)THEN
+                    text_write_string(out_channel,"-----Modal Participation Factors Start-----")
                     text_write_string(out_channel,str)
                     WHILE(text_read_string(in_channel,str,str_length)==0)
                         index=str_index(str,"TOTAL")
                         IF(index==0)THEN
                             text_write_string(out_channel,str)
                         ELSE
-                            text_write_string(out_channel,str)
                             BREAK
                         END IF
                     END WHILE
+                    text_write_string(out_channel,"-----Modal Participation Factors END-----")
                     BREAK
                 END IF
             END IF
         END WHILE
-
-        text_write_string(out_channel,"-----Modal Participation Factors END-----")
-
     END FUNCTION
+
+    /*5.提取单点约束*/
+    FUNCTION export_spcforce()
+        INTEGER str_length,index,status
+        STRING str[500]
+        $ 在.f06文件中找到结果写入结果文件中
+        WHILE(TRUE)
+            status=text_read_string(in_channel,str,str_length)
+            IF(status<0) THEN 
+                BREAK
+            ELSE IF(status>0)THEN
+                msg_to_form( status, 4, 0, 0, 0., "" )
+            ELSE
+                index=str_index(str,"MAXIMUM  SPCFORCES")
+                IF(index!=0)THEN
+                    text_write_string(out_channel,"-----SpcForces Start-----")
+                    text_write_string(out_channel,str)
+                    WHILE(text_read_string(in_channel,str,str_length)==0)
+                        index=str_index(str,"Nastran")
+                        IF(index==0)THEN
+                            text_write_string(out_channel,str)
+                        ELSE
+                            $ text_write_string(out_channel,str)
+                            BREAK
+                        END IF
+                    END WHILE
+                    text_write_string(out_channel,"-----SpcForces END-----")
+                    BREAK
+                END IF
+            END IF
+        END WHILE
+    END FUNCTION
+
+     /*6.提取位移*/
+    FUNCTION export_displacement()
+        INTEGER str_length,index,status
+        STRING str[500]
+        $ 在.f06文件中找到结果写入结果文件中
+        WHILE(TRUE)
+            status=text_read_string(in_channel,str,str_length)
+            IF(status<0) THEN 
+                BREAK
+            ELSE IF(status>0)THEN
+                msg_to_form( status, 4, 0, 0, 0., "" )
+            ELSE
+                index=str_index(str,"MAXIMUM  DISPLACEMENTS")
+                IF(index!=0)THEN
+                    text_write_string(out_channel,"-----Max Displacement Start-----")
+                    text_write_string(out_channel,str)
+                    WHILE(text_read_string(in_channel,str,str_length)==0)
+                        index=str_index(str,"astran")
+                        IF(index==0)THEN
+                            text_write_string(out_channel,str)
+                        ELSE
+                            $ text_write_string(out_channel,str)
+                            BREAK
+                        END IF
+                    END WHILE
+                    text_write_string(out_channel,"-----Max Displacement END-----")
+                    BREAK
+                END IF
+            END IF
+        END WHILE
+    END FUNCTION
+
+
     FUNCTION get_load_type_string(load_type_integer)
         INTEGER load_type_integer
         STRING load_type_string[32]
