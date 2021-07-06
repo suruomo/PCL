@@ -450,7 +450,7 @@ CLASS Export_Mode
                             BREAK
                         END IF
                     END WHILE
-                     text_write_string(out_channel,"-----Modal Frequency END-----")
+                     text_write_string(out_channel,"-----Modal Frequency End-----")
                     BREAK
                 END IF
             END IF
@@ -482,7 +482,7 @@ CLASS Export_Mode
                             BREAK
                         END IF
                     END WHILE
-                    text_write_string(out_channel,"-----Modal Participation Factors END-----")
+                    text_write_string(out_channel,"-----Modal Participation Factors End-----")
                     BREAK
                 END IF
             END IF
@@ -514,7 +514,7 @@ CLASS Export_Mode
                             BREAK
                         END IF
                     END WHILE
-                    text_write_string(out_channel,"-----SpcForces END-----")
+                    text_write_string(out_channel,"-----SpcForces End-----")
                     BREAK
                 END IF
             END IF
@@ -546,7 +546,7 @@ CLASS Export_Mode
                             BREAK
                         END IF
                     END WHILE
-                    text_write_string(out_channel,"-----Max Displacement END-----")
+                    text_write_string(out_channel,"-----Max Displacement End-----")
                     BREAK
                 END IF
             END IF

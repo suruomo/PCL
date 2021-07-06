@@ -79,7 +79,7 @@ CLASS My_Menu
 		CASE("static_analysis")
 			 IF(db_is_open()==TRUE)THEN
             ui_exec_function("Export_Static","init")
-            Export_Static.display()
+            ui_exec_function("Export_Static","display")
          ELSE
             xf_error_start("No Database Opening!") 
             xf_error_end()
@@ -87,7 +87,7 @@ CLASS My_Menu
       CASE("mode_analysis")
 			 IF(db_is_open()==TRUE)THEN
             ui_exec_function("Export_Mode","init")
-            Export_Mode.display()
+            ui_exec_function("Export_Mode","display")
          ELSE
             xf_error_start("No Database Opening!") 
             xf_error_end()

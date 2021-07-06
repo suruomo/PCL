@@ -722,7 +722,7 @@ ELSE
 BREAK
 END IF
 END WHILE
-text_write_string(out_channel,"-----Modal Frequency END-----")
+text_write_string(out_channel,"-----Modal Frequency End-----")
 BREAK
 END IF
 END IF
@@ -754,11 +754,10 @@ index=str_index(str,"TOTAL")
 IF(index==0)THEN
 text_write_string(out_channel,str)
 ELSE
-text_write_string(out_channel,str)
 BREAK
 END IF
 END WHILE
-text_write_string(out_channel,"-----Modal Participation Factors END-----")
+text_write_string(out_channel,"-----Modal Participation Factors End-----")
 BREAK
 END IF
 END IF
@@ -792,7 +791,7 @@ $ text_write_string(out_channel,str)
 BREAK
 END IF
 END WHILE
-text_write_string(out_channel,"-----SpcForces END-----")
+text_write_string(out_channel,"-----SpcForces End-----")
 BREAK
 END IF
 END IF
@@ -826,7 +825,7 @@ $ text_write_string(out_channel,str)
 BREAK
 END IF
 END WHILE
-text_write_string(out_channel,"-----Max Displacement END-----")
+text_write_string(out_channel,"-----Max Displacement End-----")
 BREAK
 END IF
 END IF
