@@ -332,7 +332,7 @@ END FUNCTION
 
 
 FUNCTION select_file()
-ui_exec_function("File_Form","display")
+ui_exec_function("XDB_File_Form","display")
 END FUNCTION
 
 
@@ -342,8 +342,6 @@ GLOBAL WIDGET file_id
 LOGICAL load_flag,mat_flag,displacement_flag,constrainforces_flag,stress_flag,strain_flag
 INTEGER status
 STRING dir[200],date[128],time[32],path[300],database_name[256]
-
-
 $ 获取当前目录
 get_current_dir(dir)
 $ 初始化存放文件目录
@@ -1491,7 +1489,7 @@ END FUNCTION
 END CLASS
 
 
-CLASS File_Form
+CLASS XDB_File_Form
 
 
 CLASSWIDE WIDGET form_id,file_widget
@@ -1514,7 +1512,7 @@ END FUNCTION
 
 
 FUNCTION display()
-	 ui_form_display("File_Form")
+	 ui_form_display("XDB_File_Form")
 END FUNCTION
 
 
@@ -1522,10 +1520,10 @@ FUNCTION file_select(pathname,type)
 	 STRING pathname[],type[]
 GLOBAL WIDGET file_id
 IF(type=="CANCEL")THEN
-ui_form_hide("File_Form")
+ui_form_hide("XDB_File_Form")
 ELSE
 ui_wid_set(file_id,"VALUE",pathname)
-ui_form_hide("File_Form")
+ui_form_hide("XDB_File_Form")
 END IF
 END FUNCTION
 

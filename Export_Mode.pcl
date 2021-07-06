@@ -71,6 +71,7 @@ CLASS Export_Mode
         INTEGER i=1,j=1,k=0,loadcase_number=0,loadcase_ids(VIRTUAL),status,loadcase_id,subcase_number,subcase_ids(VIRTUAL)
         STRING loadcase_name[128],subcase_name[128],loadcase_names[128](VIRTUAL),res[300]
 
+        loadsbcs_eval_all() /*重新计算所有载荷约束信息*/
         $ 获取工况
         IF(db_get_all_load_case_names()==0)THEN
             IF(db_get_next_load_case_name(loadcase_name)==0)THEN
@@ -109,7 +110,7 @@ CLASS Export_Mode
     END FUNCTION
 
     FUNCTION select_file()
-        ui_exec_function("File_Form","display")
+        ui_exec_function("F06_File_Form","display")
     END FUNCTION
 
     $ 应用选择
@@ -119,6 +120,7 @@ CLASS Export_Mode
         INTEGER status0,status1
         STRING dir[200],date[128],time[32],path_out[300],path_in[300]
        
+      
         $ 获取当前目录
         get_current_dir(dir)
         $ 初始化存放文件目录
@@ -527,7 +529,7 @@ CLASS Export_Mode
 
 END CLASS
 
-CLASS File_Form
+CLASS F06_File_Form
 
     CLASSWIDE WIDGET form_id,file_widget
 
@@ -545,17 +547,17 @@ CLASS File_Form
     END FUNCTION 
 
     FUNCTION display()
-   	    ui_form_display("File_Form")
+   	    ui_form_display("F06_File_Form")
     END FUNCTION
 
     FUNCTION file_select(pathname,type)
    	    STRING pathname[],type[]
         GLOBAL WIDGET file_id
         IF(type=="CANCEL")THEN
-            ui_form_hide("File_Form")
+            ui_form_hide("F06_File_Form")
         ELSE
             ui_wid_set(file_id,"VALUE",pathname)
-            ui_form_hide("File_Form")
+            ui_form_hide("F06_File_Form")
         END IF
     END FUNCTION
 

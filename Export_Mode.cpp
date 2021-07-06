@@ -325,6 +325,7 @@ INTEGER i=1,j=1,k=0,loadcase_number=0,loadcase_ids(VIRTUAL),status,loadcase_id,s
 STRING loadcase_name[128],subcase_name[128],loadcase_names[128](VIRTUAL),res[300]
 
 
+loadsbcs_eval_all()
 $ 获取工况
 IF(db_get_all_load_case_names()==0)THEN
 IF(db_get_next_load_case_name(loadcase_name)==0)THEN
@@ -364,7 +365,7 @@ END FUNCTION
 
 
 FUNCTION select_file()
-ui_exec_function("File_Form","display")
+ui_exec_function("F06_File_Form","display")
 END FUNCTION
 
 
@@ -374,6 +375,8 @@ GLOBAL WIDGET file_id
 LOGICAL load_flag,mat_flag,frequency_flag,factors_flag
 INTEGER status0,status1
 STRING dir[200],date[128],time[32],path_out[300],path_in[300]
+
+
 
 
 $ 获取当前目录
@@ -812,7 +815,7 @@ END FUNCTION
 END CLASS
 
 
-CLASS File_Form
+CLASS F06_File_Form
 
 
 CLASSWIDE WIDGET form_id,file_widget
@@ -835,7 +838,7 @@ END FUNCTION
 
 
 FUNCTION display()
-	 ui_form_display("File_Form")
+	 ui_form_display("F06_File_Form")
 END FUNCTION
 
 
@@ -843,10 +846,10 @@ FUNCTION file_select(pathname,type)
 	 STRING pathname[],type[]
 GLOBAL WIDGET file_id
 IF(type=="CANCEL")THEN
-ui_form_hide("File_Form")
+ui_form_hide("F06_File_Form")
 ELSE
 ui_wid_set(file_id,"VALUE",pathname)
-ui_form_hide("File_Form")
+ui_form_hide("F06_File_Form")
 END IF
 END FUNCTION
 
